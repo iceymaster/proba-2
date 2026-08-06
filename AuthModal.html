@@ -1,0 +1,40 @@
+<div id="authModal" class="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <div id="tabLogin" class="auth-tab active" onclick="switchAuthTab('login')">Bejelentkezés</div>
+      <div id="tabRegister" class="auth-tab" onclick="switchAuthTab('register')">Regisztráció</div>
+    </div>
+
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <h3 style="margin-bottom: 12px;">🔑 Bejelentkezés</h3>
+      <div class="form-group">
+        <label>Email cím:</label>
+        <input type="email" id="loginEmail" required placeholder="pl. jatekos@gmail.com">
+      </div>
+      <div class="form-group">
+        <label>Jelszó:</label>
+        <input type="password" id="loginPassword" required placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn-primary">Bejelentkezés</button>
+    </form>
+
+    <form id="registerForm" onsubmit="handleRegister(event)" style="display: none;">
+      <h3 style="margin-bottom: 12px;">📝 Új Regisztráció</h3>
+      <div class="form-group">
+        <label>Email cím:</label>
+        <input type="email" id="regEmail" required placeholder="pl. jatekos@gmail.com">
+      </div>
+      <div class="form-group">
+        <label>IG Karakter Neve (In-Game):</label>
+        <input type="text" id="regIgName" required placeholder="pl. Lorenzo Di Falconata">
+      </div>
+      <div class="form-group">
+        <label>Jelszó:</label>
+        <input type="password" id="regPassword" required placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn-primary" style="background-color: #38bdf8;">Regisztráció</button>
+    </form>
+
+    <div id="authStatusMsg" class="status-msg"></div>
+  </div>
+</div>

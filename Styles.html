@@ -1,0 +1,72 @@
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b1120; color: #f8fafc; padding: 20px; }
+  
+  .auth-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(11, 17, 32, 0.95); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+  .auth-card { background: #1e293b; border: 1px solid #334155; padding: 32px; border-radius: 12px; width: 100%; max-width: 440px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
+  .auth-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 10px; }
+  .auth-tab { flex: 1; text-align: center; padding: 8px; cursor: pointer; font-weight: bold; color: #94a3b8; border-radius: 6px; }
+  .auth-tab.active { color: #38bdf8; background: #0f172a; border: 1px solid #334155; }
+
+  .dashboard-grid { display: grid; grid-template-columns: 440px 1fr; gap: 20px; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 992px) { .dashboard-grid { grid-template-columns: 1fr; } }
+  .card { background-color: #1e293b; padding: 24px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4); border: 1px solid #334155; margin-bottom: 20px; }
+  .card.admin-card { border-color: #f59e0b; background: #1a2234; }
+  h2, h3 { color: #38bdf8; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+  .subtitle { font-size: 0.85rem; color: #94a3b8; margin-bottom: 20px; }
+  .form-group { margin-bottom: 16px; }
+  .form-group.half { flex: 1; }
+  .form-row { display: flex; gap: 12px; }
+  label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.9rem; color: #cbd5e1; }
+  input[type="text"], input[type="password"], input[type="email"], input[type="number"], input[type="date"], input[type="datetime-local"], select, textarea {
+    width: 100%; padding: 10px 12px; background-color: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #f8fafc; font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: #38bdf8; }
+  .checkbox-group label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .checkbox-group input[type="checkbox"] { width: 16px; height: 16px; accent-color: #38bdf8; }
+  .sub-section { background-color: #0f172a; padding: 12px; border-radius: 8px; border: 1px dashed #334155; margin-bottom: 16px; }
+  
+  .work-stages-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+  .stage-item { background: #1e293b; padding: 8px; border-radius: 6px; border: 1px solid #334155; font-size: 0.85rem; }
+
+  .parcel-sides-wrapper { display: flex; gap: 10px; margin-top: 6px; }
+  .parcel-column { flex: 1; background: rgba(15, 23, 42, 0.6); padding: 8px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05); }
+  .column-title { display: block; font-size: 0.8rem; font-weight: bold; color: #94a3b8; margin-bottom: 6px; text-align: center; }
+  .chip-group { display: flex; gap: 6px; justify-content: center; }
+  .chip-btn { flex: 1; padding: 8px 0; background: #1e293b; border: 1px solid #334155; color: #f8fafc; border-radius: 6px; font-weight: bold; cursor: pointer; transition: all 0.2s ease; text-align: center; }
+  .chip-btn.active { background: #22c55e; border-color: #4ade80; color: #000; box-shadow: 0 0 10px rgba(34, 197, 94, 0.4); }
+  .calc-box { background-color: #1e293b; border-left: 4px solid #38bdf8; padding: 8px 12px; border-radius: 4px; margin-top: 8px; font-size: 0.9rem; }
+  .calc-box.money { border-left-color: #22c55e; }
+  button[type="submit"], .btn-primary { width: 100%; padding: 12px; background-color: #10b981; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+  button[type="submit"]:hover, .btn-primary:hover { background-color: #059669; }
+  .status-msg { margin-top: 12px; padding: 10px; border-radius: 8px; text-align: center; font-weight: 600; display: none; }
+  .status-msg.success { display: block; background-color: #064e3b; color: #34d399; border: 1px solid #059669; }
+  .status-msg.error { display: block; background-color: #7f1d1d; color: #fca5a5; border: 1px solid #dc2626; }
+  
+  .widget-stats { display: flex; gap: 15px; margin-top: 10px; }
+  .stat-box { flex: 1; background: #0f172a; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #334155; }
+  .stat-box .title { font-size: 0.8rem; color: #94a3b8; }
+  .stat-box .val { font-size: 1.1rem; font-weight: bold; margin-top: 4px; }
+  .val.green { color: #4ade80; } .val.red { color: #f87171; } .val.blue { color: #38bdf8; }
+  .item-row { display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 10px 14px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #334155; }
+  .item-row .timer { font-weight: bold; color: #f87171; }
+  .empty-state { color: #64748b; font-style: italic; font-size: 0.9rem; text-align: center; padding: 10px; }
+
+  .farm-map-card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+  .farm-map-header { font-weight: bold; color: #38bdf8; margin-bottom: 8px; font-size: 0.95rem; }
+  .farm-map-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  
+  .parcel-tile { aspect-ratio: 1; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 0.75rem; border: 1px solid rgba(255,255,255,0.1); text-align: center; padding: 2px; }
+  .parcel-tile.admin-clickable { cursor: pointer; transition: transform 0.1s, border-color 0.2s; }
+  .parcel-tile.admin-clickable:hover { transform: scale(1.05); border-color: #38bdf8; }
+  .parcel-tile.empty { background: #1e293b; color: #64748b; border: 1px dashed #334155; }
+  .parcel-tile.growing { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border-color: #38bdf8; }
+  .parcel-tile.water { background: rgba(249, 115, 22, 0.25); color: #fb923c; border-color: #f97316; }
+  .parcel-tile.harvest { background: rgba(34, 197, 94, 0.25); color: #4ade80; border-color: #22c55e; }
+
+  .map-legend { display: flex; gap: 12px; justify-content: center; font-size: 0.8rem; color: #94a3b8; margin-top: 12px; padding-top: 10px; border-top: 1px solid #334155; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-box { width: 12px; height: 12px; border-radius: 3px; }
+  
+  .user-badge { display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 8px 12px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 15px; font-size: 0.85rem; }
+</style>

@@ -1,0 +1,234 @@
+<div class="card">
+
+    <h2>🌾 Farm Esemény Rögzítése</h2>
+
+    <form id="farmForm">
+
+        <input type="hidden"
+               id="parcelCount"
+               name="parcelCount"
+               value="1">
+
+        <label>Ki vagy?</label>
+
+        <input
+            id="userName"
+            name="userName"
+            type="text"
+            autocomplete="off"
+            placeholder="Játékos neve">
+
+        <label>Farm</label>
+
+        <select
+            id="farmSelect"
+            name="farmSelect">
+
+        </select>
+
+        <div id="newFarmBox" class="hidden">
+
+            <div class="row">
+
+                <div>
+
+                    <label>Farm ID</label>
+
+                    <input
+                        id="newFarmId"
+                        name="newFarmId">
+
+                </div>
+
+                <div>
+
+                    <label>Farm neve</label>
+
+                    <input
+                        id="newFarmName"
+                        name="newFarmName">
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <label>Művelet</label>
+
+        <select
+            id="actionType"
+            name="actionType">
+
+            <option value="Locsolás">💧 Locsolás</option>
+
+            <option value="Ültetés">🌱 Ültetés</option>
+
+            <option value="Aratás">🚜 Aratás</option>
+
+            <option value="Eladás">💰 Eladás</option>
+
+            <option value="Vásárlás">🛒 Mag vásárlás</option>
+
+            <option value="LádaÁthelyezés">📦 Láda feltöltés</option>
+
+            <option value="Bérmunka">🚜 Bérmunka</option>
+
+            <option
+                id="payOption"
+                class="hidden"
+                value="Kifizetés">
+
+                💳 Kifizetés
+
+            </option>
+
+            <option value="Infó">
+
+                ℹ️ Egyéb
+
+            </option>
+
+        </select>
+
+        <div id="cropBox">
+
+            <label>Termény</label>
+
+            <select
+                id="cropSelect"
+                name="cropSelect">
+
+            </select>
+
+        </div>
+
+        <div id="parcelBox" class="hidden">
+
+            <label>Parcellák</label>
+
+            <div class="parcel-grid" id="parcelGrid">
+
+            </div>
+
+        </div>
+
+        <div id="buyBox" class="hidden">
+
+            <label>Vásárolt mennyiség</label>
+
+            <input
+                type="number"
+                id="buyQty"
+                name="buyQty"
+                value="1">
+
+        </div>
+
+        <div id="boxQtyBox" class="hidden">
+
+            <label>Ládába helyezett mennyiség</label>
+
+            <input
+                type="number"
+                id="boxQty"
+                name="boxQty"
+                value="1">
+
+        </div>
+
+        <div id="plantingBox" class="hidden">
+
+            <label>Ültetők száma</label>
+
+            <select
+                id="planterCount"
+                name="planterCount">
+
+                <option value="1">1</option>
+
+                <option value="2">2</option>
+
+                <option value="3">3</option>
+
+                <option value="4">4</option>
+
+                <option value="5">5</option>
+
+            </select>
+
+            <label>
+
+                <input
+                    type="checkbox"
+                    id="hasExtraSeeds"
+                    name="hasExtraSeeds">
+
+                Plusz magok felhasználása
+
+            </label>
+
+            <div
+                id="extraSeedBox"
+                class="hidden">
+
+                <label>Extra mag</label>
+
+                <input
+                    id="extraSeedCount"
+                    name="extraSeedCount"
+                    type="number"
+                    value="0">
+
+            </div>
+
+            <div id="plantersFields">
+
+            </div>
+
+        </div>
+
+        <div id="detailsBox">
+
+            <label>Leírás</label>
+
+            <input
+                id="details"
+                name="details">
+
+        </div>
+
+        <div id="valueBox">
+
+            <label>Összeg</label>
+
+            <input
+                id="value"
+                name="value"
+                type="number">
+
+        </div>
+
+        <label>Megjegyzés</label>
+
+        <textarea
+            id="note"
+            name="note">
+
+        </textarea>
+
+        <button type="submit">
+
+            💾 Mentés
+
+        </button>
+
+        <div
+            id="status"
+            class="status">
+
+        </div>
+
+    </form>
+
+</div>

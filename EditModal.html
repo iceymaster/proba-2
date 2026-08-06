@@ -1,0 +1,52 @@
+<div id="editParcelModal" class="auth-overlay" style="display: none;">
+  <div class="auth-card">
+    <h3>👑 ADMIN: Parcella & Időpont Módosítás</h3>
+    <p class="subtitle" id="editModalSub">Farm & Parcella szerkesztése</p>
+
+    <input type="hidden" id="editFarmName">
+    <input type="hidden" id="editParcelNum">
+
+    <div class="form-group">
+      <label>Növény Típusa:</label>
+      <select id="editCropSelect">
+        <option value="Málna 🍇">Málna 🍇</option>
+        <option value="Paradicsom 🍅">Paradicsom 🍅</option>
+        <option value="Eper 🍓">Eper 🍓</option>
+        <option value="Sütőtök 🎃">Sütőtök 🎃</option>
+        <option value="Görögdinnye 🍉">Görögdinnye 🍉</option>
+        <option value="Sárgadinnye 🍈">Sárgadinnye 🍈</option>
+        <option value="Uborka 🥒">Uborka 🥒</option>
+        <option value="TV paprika 🫑">TV paprika 🫑</option>
+        <option value="Chilipaprika 🌶️">Chilipaprika 🌶️</option>
+        <option value="Almapaprika 🫑">Almapaprika 🫑</option>
+        <option value="Búza 🌾">Búza 🌾</option>
+        <option value="Kukorica 🌽">Kukorica 🌽</option>
+        <option value="Kender 🌿">Kender 🌿</option>
+        <option value="Kókacserje 🍃">Kókacserje 🍃</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Kívánt Állapot:</label>
+      <select id="editStatusSelect">
+        <option value="growing">🟦 Locsolva / Fejlődik (Alap 12h locsolás)</option>
+        <option value="water">🟧 Locsolandó! (Azonnali kiszáradás)</option>
+        <option value="harvest">🟩 Aratásra KÉSZ!</option>
+        <option value="empty">⬛ Üres (Törlés / Betakarítva)</option>
+      </select>
+    </div>
+
+    <div class="form-group sub-section">
+      <label style="color:#38bdf8;">⏰ Utolsó Locsolás / Ültetés Időpontja:</label>
+      <input type="datetime-local" id="editCustomDate">
+      <span style="font-size:0.75rem; color:#94a3b8; display:block; margin-top:4px;">💡 Visszamenőlegesen beállíthatod a pontos időpontot.</span>
+    </div>
+
+    <div class="form-row">
+      <button type="button" class="btn-primary" onclick="saveParcelEdit()" style="flex:1;">💾 Admin Mentés</button>
+      <button type="button" onclick="closeEditModal()" style="flex:1; background:#475569; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Mégse</button>
+    </div>
+
+    <div id="editStatusMsg" class="status-msg"></div>
+  </div>
+</div>
