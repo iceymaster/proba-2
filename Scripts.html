@@ -202,7 +202,11 @@
       sel.innerHTML = '<option value="">-- Válassz farmot --</option>';
       farms.forEach(function(f) {
         var name = f.fullName || f.name;
-        sel.innerHTML += '<option value="' + name + '">' + name + '</option>';
+        var option = document.createElement('option');
+        option.value = String(f.id);
+        option.textContent = name;
+        option.dataset.farmName = name;
+        sel.appendChild(option);
       });
     });
   }
@@ -257,7 +261,7 @@
         '</div>' +
         '<div style="display:flex; align-items:center; gap:12px;">' +
           '<div class="timer-badge ' + statusClass + '">' + icon + formatTime(diff) + '</div>' +
-          '<button type="button" class="btn-submit" style="width:auto; padding:6px 14px; margin:0; font-size:0.85rem;" onclick="selectFarmInForm(\'' + farm.fullName.replace(/'/g, "\\'") + '\')">🎯 Kiválasztás</button>' +
+          '<button type="button" class="btn-submit" style="width:auto; padding:6px 14px; margin:0; font-size:0.85rem;" onclick="selectFarmInForm(' + farm.id + ')">🎯 Kiválasztás</button>' +
         '</div>';
     });
 
@@ -287,15 +291,24 @@
   }
 
   // --- FARM KIVÁLASZTÁSA A FORM-BAN ---
-  function selectFarmInForm(farmName) {
-    var activeContent = document.querySelector('.tab-content.active');
-    if (activeContent) {
-      var select = activeContent.querySelector('.farm-select-input');
-      if (select) {
-        select.value = farmName;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
+  function selectFarmInForm(farmId) {
+    var form = document.querySelector('#view-locsolas form');
+    var select = form && form.querySelector('.farm-select-input');
+    if (!select) return;
+
+    var option = Array.prototype.find.call(select.options, function(item) {
+      return item.value === String(farmId);
+    });
+
+    if (!option) {
+      alert('A kiválasztott farm nem található a felső listában. Frissítsd az oldalt.');
+      return;
     }
+
+    select.value = option.value;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    select.focus();
+    form.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   // --- LOCSOLÁS RÖGZÍTÉSE & 15 ÓRÁS SZÁMLÁLÓ ÚJRAINDÍTÁSA ---
@@ -311,8 +324,10 @@
       return;
     }
 
-    var selectedName = select.value;
-    var targetFarm = farmsData.find(function(f) { return f.fullName === selectedName || f.name === selectedName; });
+    var selectedId = select.value;
+    var targetFarm = farmsData.find(function(f) {
+      return String(f.id) === String(selectedId);
+    });
 
     if (targetFarm && actionType === 'Locsolás') {
       // 15 óra hozzáadása (újraindítás)
