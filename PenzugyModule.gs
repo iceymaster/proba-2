@@ -7,11 +7,14 @@ var PenzugyModule = (function() {
     values.forEach(function(r) {
       var user = String(r[1] || '').trim();
       var action = String(r[3] || '').trim();
-      var val = Number(r[5] || 0);
+      // JAVÍTÁS: Az Érték (Ft) a 6-os indexű oszlop (7. oszlop), azaz r[6], nem r[5]!
+      var val = Number(r[6] || 0);
 
-      if (user && user !== 'Kitöltő Neve' && user !== 'Névtelen' && user.toLowerCase() !== 'isido maestro') {
+      if (user && user !== 'Kitöltő Neve' && user !== 'Névtelen' && user !== 'Rendszer' && user !== '-') {
         if (!balances[user]) balances[user] = 0;
-        if (action.indexOf('Eladás') === -1 && action.indexOf('Vásárlás') === -1) {
+        
+        // Az eladások, értékesítések és vásárlások összegeit nem adja hozzá a személyes egyenleghez
+        if (action.indexOf('Eladás') === -1 && action.indexOf('Értékesítés') === -1 && action.indexOf('Vásárlás') === -1) {
           balances[user] += val;
         }
       }
@@ -30,7 +33,8 @@ var PenzugyModule = (function() {
       var farm = String(r[2] || '').trim();
       var action = String(r[3] || '').trim();
       var details = String(r[4] || '').trim();
-      var val = Number(r[5] || 0);
+      // JAVÍTÁS: Itt is r[6] az érték
+      var val = Number(r[6] || 0);
 
       if (farm && farm !== 'Farm Neve' && farm !== '-' && farm.indexOf('Global') === -1) {
         if (!farms[farm]) {
@@ -44,7 +48,7 @@ var PenzugyModule = (function() {
         }
       }
 
-      if (action.indexOf('Eladás') !== -1) {
+      if (action.indexOf('Eladás') !== -1 || action.indexOf('Értékesítés') !== -1) {
         globalIncome += Math.abs(val);
         if (farm && farm.indexOf('Global') === -1 && farms[farm]) {
           farms[farm].income += Math.abs(val);
@@ -91,9 +95,10 @@ var PenzugyModule = (function() {
       'Rendszer',
       farmName,
       'Infó',
-      'Bérlet meghosszabbítva +7 nappal! | Bérlet lejár: ' + newIsoStr,
+      '-',
+      '-',
       0,
-      'Bérlet hosszabbítás gombbal'
+      'Bérlet meghosszabbítva +7 nappal! | Bérlet lejár: ' + newIsoStr
     ]);
 
     return "Sikeresen meghosszabbítva!";

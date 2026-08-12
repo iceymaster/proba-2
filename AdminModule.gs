@@ -27,7 +27,7 @@ var AdminModule = (function () {
       var namesMap = {};
       rawData.forEach(function(r) {
         var w = String(r[1] || '').trim();
-        if (w && w !== "-" && w !== "Admin") {
+        if (w && w !== "-" && w !== "Admin" && w !== "Rendszer" && w !== "Kitöltő Neve") {
           namesMap[w] = true;
         }
       });
@@ -49,10 +49,15 @@ var AdminModule = (function () {
 
     rawData.forEach(function(row) {
       var worker = String(row[1] || '').trim();
-      var value = Number(row[6]) || 0;
+      var action = String(row[3] || '').trim();
+      // JAVÍTÁS: Az Érték oszlop a row[5] (6. oszlop), nem a row[6]!
+      var value = Number(row[5]) || 0;
 
       if (balances.hasOwnProperty(worker)) {
-        balances[worker] += value;
+        // Az eladásokat és értékesítéseket nem számítjuk bele a dolgozó személyes egyenlegébe
+        if (action.indexOf('Eladás') === -1 && action.indexOf('Értékesítés') === -1 && action.indexOf('Vásárlás') === -1) {
+          balances[worker] += value;
+        }
       }
     });
 
@@ -78,8 +83,9 @@ var AdminModule = (function () {
 
     rawData.forEach(function(row) {
       var w = String(row[1] || '').trim();
-      var val = Number(row[6]) || 0;
-      if (w === workerName) {
+      var action = String(row[3] || '').trim();
+      var val = Number(row[5] || 0); // JAVÍTÁS: row[5] az érték
+      if (w === workerName && action.indexOf('Eladás') === -1 && action.indexOf('Értékesítés') === -1 && action.indexOf('Vásárlás') === -1) {
         currentBalance += val;
       }
     });
