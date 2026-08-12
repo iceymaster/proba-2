@@ -1,6 +1,46 @@
 <script>
   var currentUserSession = null;
   var liveTimerInterval = null;
+  var debugMessages = [];
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function reportProblem(message, error) {
+    var detail = error && error.message ? ': ' + error.message : '';
+    debugMessages.unshift({ time: new Date().toLocaleTimeString('hu-HU'), message: message + detail });
+    debugMessages = debugMessages.slice(0, 8);
+    renderDebugPanel();
+  }
+
+  function renderDebugPanel() {
+    var panel = document.getElementById('debugPanel');
+    if (!panel) return;
+    var systemChecks = [
+      'Farmkiválasztó: ' + (document.querySelector('#view-locsolas .farm-select-input') ? 'rendben' : 'hiányzik'),
+      'Locsolási lista: ' + (document.getElementById('farmList') ? 'rendben' : 'hiányzik'),
+      'Betöltött farmok: ' + farmsData.length + ' db'
+    ];
+    panel.className = 'debug-panel' + (debugMessages.length ? ' error' : '');
+    panel.innerHTML = '<strong>🔍 Rendszerellenőrzés</strong><ul>' +
+      systemChecks.map(function(item) { return '<li>✅ ' + escapeHtml(item) + '</li>'; }).join('') +
+      (debugMessages.length ? debugMessages.map(function(item) { return '<li>❌ [' + item.time + '] ' + escapeHtml(item.message) + '</li>'; }).join('') : '<li>✅ Nem található felületi hiba.</li>') +
+      '</ul>';
+  }
+
+  function toggleDebugPanel() {
+    var panel = document.getElementById('debugPanel');
+    if (!panel) return;
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) renderDebugPanel();
+  }
+
+  window.addEventListener('error', function(event) {
+    reportProblem('JavaScript hiba történt', event.error || { message: event.message });
+  });
 
   // Farm adatok dinamikus időzítővel (15 órás locsolási ciklus)
   var farmsData = [
@@ -15,6 +55,7 @@
 
   window.addEventListener('DOMContentLoaded', function() {
     checkSession();
+    renderDebugPanel();
   });
 
   // --- AUTHENTIKÁCIÓ ÉS MUNKAMENET ---
@@ -154,16 +195,32 @@
         .withSuccessHandler(function(data) {
           renderAllViews(data || defaultData);
         })
-        .withFailureHandler(function() {
+        .withFailureHandler(function(error) {
+          reportProblem('A szerveradatok betöltése nem sikerült, mintaadatok láthatók', error);
           renderAllViews(defaultData);
         })
         .getDashboardStats();
     } catch(e) {
+      reportProblem('A szerverkapcsolat nem indult el, mintaadatok láthatók', e);
       renderAllViews(defaultData);
     }
   }
 
   function renderAllViews(data) {
+    if (data.farms && data.farms.length) {
+      farmsData = data.farms.map(function(farm, index) {
+        var existing = farmsData.find(function(item) {
+          return item.name === farm.name || item.fullName === farm.fullName;
+        });
+        return {
+          id: farm.id || (existing ? existing.id : index + 1),
+          name: farm.name || (existing ? existing.name : 'Ismeretlen farm'),
+          fullName: farm.fullName || farm.name || (existing ? existing.fullName : 'Ismeretlen farm'),
+          crop: farm.crop || (existing ? existing.crop : '-'),
+          nextWatering: existing ? existing.nextWatering : Date.now() + (15 * 3600 * 1000)
+        };
+      });
+    }
     if (data.totals) {
       if (document.getElementById('statIncome')) document.getElementById('statIncome').innerText = Number(data.totals.income || 0).toLocaleString('hu-HU') + ' Ft';
       if (document.getElementById('statCost')) document.getElementById('statCost').innerText = Number(data.totals.cost || 0).toLocaleString('hu-HU') + ' Ft';
@@ -172,7 +229,7 @@
 
     if (data.farms && document.getElementById('badgeActiveFarms')) {
       document.getElementById('badgeActiveFarms').innerText = data.farms.length;
-      populateFarmSelects(data.farms);
+      populateFarmSelects(farmsData);
     }
 
     if (data.expiringAlerts && document.getElementById('badgeLeaseAlerts')) {
@@ -294,7 +351,10 @@
   function selectFarmInForm(farmId) {
     var form = document.querySelector('#view-locsolas form');
     var select = form && form.querySelector('.farm-select-input');
-    if (!select) return;
+    if (!select) {
+      reportProblem('A locsolási farmválasztó nem található');
+      return;
+    }
 
     var option = Array.prototype.find.call(select.options, function(item) {
       return item.value === String(farmId);
@@ -309,6 +369,9 @@
     select.dispatchEvent(new Event('change', { bubbles: true }));
     select.focus();
     form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    reportProblem('Farm kiválasztva: ' + option.textContent);
+    debugMessages.shift();
+    renderDebugPanel();
   }
 
   // --- LOCSOLÁS RÖGZÍTÉSE & 15 ÓRÁS SZÁMLÁLÓ ÚJRAINDÍTÁSA ---
@@ -316,7 +379,10 @@
     if (event) event.preventDefault();
     
     var activeContent = document.querySelector('.tab-content.active');
-    if (!activeContent) return;
+    if (!activeContent) {
+      reportProblem('Nincs megnyitott oldal a művelet rögzítéséhez');
+      return;
+    }
 
     var select = activeContent.querySelector('.farm-select-input');
     if (!select || !select.value) {
@@ -329,12 +395,54 @@
       return String(f.id) === String(selectedId);
     });
 
-    if (targetFarm && actionType === 'Locsolás') {
-      // 15 óra hozzáadása (újraindítás)
-      targetFarm.nextWatering = Date.now() + (15 * 3600 * 1000);
-      updateLiveWateringTimersAnimated();
-    } else {
-      alert("⏳ Művelet rögzítve: " + actionType);
+    if (!targetFarm) {
+      reportProblem('A kiválasztott farm nem található a locsolási listában');
+      alert('❌ A kiválasztott farm nem található. Frissítsd az oldalt, majd próbáld újra.');
+      return;
+    }
+
+    var form = event && event.target;
+    var cropInput = form && form.querySelector('.crop-select-input');
+    var saleInput = form && form.querySelector('.sale-value-input');
+    var harvestInput = form && form.querySelector('.harvest-qty-input');
+    var value = saleInput ? Number(saleInput.value) : 0;
+    var parcels = harvestInput && harvestInput.value ? harvestInput.value : '-';
+
+    if (actionType === 'Eladás' && value <= 0) {
+      alert('⚠️ Add meg az eladás bevételét.');
+      return;
+    }
+
+    var payload = {
+      userName: currentUserSession ? currentUserSession.igName : 'Isidro Maestro',
+      actionType: actionType,
+      farmSelect: targetFarm.fullName || targetFarm.name,
+      cropSelect: cropInput ? cropInput.value : targetFarm.crop || '-',
+      selectedParcelsList: parcels,
+      value: value,
+      note: actionType === 'Locsolás' ? 'Locsolási időzítő újraindítva (15 óra)' : ''
+    };
+
+    function applySuccess(message) {
+      if (actionType === 'Locsolás') {
+        targetFarm.nextWatering = Date.now() + (15 * 3600 * 1000);
+        updateLiveWateringTimersAnimated();
+      }
+      alert(message || ('✅ Művelet rögzítve: ' + actionType));
+      loadDashboardData();
+    }
+
+    try {
+      google.script.run
+        .withSuccessHandler(applySuccess)
+        .withFailureHandler(function(error) {
+          reportProblem('A művelet nem menthető: ' + actionType, error);
+          alert('❌ A művelet nem menthető. Nyisd meg a Hibakeresés panelt a részletekhez.');
+        })
+        .saveData(payload);
+    } catch (error) {
+      reportProblem('A szerverkapcsolat nem érhető el, a művelet nincs mentve', error);
+      alert('❌ A művelet nem menthető szerverkapcsolat nélkül.');
     }
   }
 
@@ -425,4 +533,153 @@
 
     container.innerHTML = html;
   }
+  // Felülírja a régi mintalistát a valós, szerverről számolt egyenlegekkel.
+  function renderWorkersList() {
+    var container = document.getElementById('unpaidBalancesContainer');
+    if (!container) return;
+    container.innerHTML = '<div style="padding:20px; color:#94a3b8;">Munkás-egyenlegek betöltése…</div>';
+    try {
+      google.script.run
+        .withSuccessHandler(function(workers) {
+          var html = '<div style="padding:20px;"><h4 style="color:#00f3ff; margin-bottom:12px;">Munkások & fizetendő összegek</h4>';
+          if (!workers || !workers.length) {
+            html += '<p style="color:#00e676;">Nincs kifizetetlen munkabér.</p>';
+          } else {
+            workers.forEach(function(item) {
+              var balance = Number(item.balance) || 0;
+              html += '<div style="display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid rgba(255,255,255,.08)">' +
+                '<span style="flex:1; font-weight:700;">' + escapeHtml(item.worker) + '</span>' +
+                '<strong style="color:#fbbf24;">' + balance.toLocaleString('hu-HU') + ' Ft</strong>' +
+                (balance > 0 ? '<button class="btn-submit" style="width:auto; padding:7px 12px; margin:0; font-size:.8rem" onclick="payWorker(' + JSON.stringify(item.worker) + ',' + balance + ')">Kifizetés</button>' : '') +
+                '</div>';
+            });
+          }
+          container.innerHTML = html + '</div>';
+        })
+        .withFailureHandler(function(error) {
+          reportProblem('A munkás-egyenlegek nem tölthetők be', error);
+          container.innerHTML = '<div style="padding:20px; color:#ff8aa8;">Nem sikerült betölteni az egyenlegeket. Nyisd meg a Hibakeresés panelt.</div>';
+        })
+        .getUnpaidBalancesList();
+    } catch (error) {
+      reportProblem('A munkás-egyenlegek szerverkapcsolata nem érhető el', error);
+    }
+  }
+
+  function payWorker(worker, amount) {
+    if (!confirm(worker + ' teljes egyenlegének kifizetése: ' + Number(amount).toLocaleString('hu-HU') + ' Ft?')) return;
+    try {
+      google.script.run
+        .withSuccessHandler(function(message) { alert(message || 'Kifizetés rögzítve.'); renderWorkersList(); loadDashboardData(); })
+        .withFailureHandler(function(error) { reportProblem('A kifizetés nem menthető', error); alert('A kifizetés nem menthető. Nyisd meg a Hibakeresés panelt.'); })
+        .saveData({ userName: worker, workerSelect: worker, actionType: 'Kifizetés', farmSelect: '-', cropSelect: '-', selectedParcelsList: '-', value: Number(amount), note: 'Teljes egyenleg automatikus rendezése' });
+    } catch (error) {
+      reportProblem('A kifizetés szerverkapcsolata nem érhető el', error);
+    }
+  }
+  var latestTimerMap = {};
+  var editableFarms = [];
+
+  function formatSeconds(seconds, emptyText) {
+    if (seconds === undefined || seconds === null) return emptyText || 'Nincs aktív növény';
+    if (seconds <= 0) return 'Most esedékes';
+    var hours = Math.floor(seconds / 3600);
+    var minutes = Math.floor((seconds % 3600) / 60);
+    return hours + ' ó ' + minutes + ' p';
+  }
+
+  // Farmtérkép: az állapotok, növények és időzítők a szerver által számolt adatokból jelennek meg.
+  function renderFarmMap(farms) {
+    var mapBox = document.getElementById('farmMapContainer');
+    if (!mapBox) return;
+    editableFarms = farms || [];
+    if (!editableFarms.length) { mapBox.innerHTML = '<div style="color:#94a3b8;">Nincs megjeleníthető farm.</div>'; return; }
+    var html = '';
+    editableFarms.forEach(function(farm, farmIndex) {
+      var farmName = farm.fullName || farm.name;
+      var parcels = Number(farm.parcelCount || (Number(farm.size) === 80 ? 4 : 6));
+      var states = latestTimerMap[farmName] || {};
+      var activeParcels = [];
+      for (var p = 1; p <= parcels; p++) {
+        var state = states[String(p)];
+        var stateText = 'Üres';
+        var color = '#94a3b8';
+        var crop = '-';
+        var water = 'Nincs locsolás';
+        var harvest = '';
+        if (state) {
+          crop = state.crop || '-';
+          water = state.waterTimeLeft || formatSeconds(state.waterSecLeft, 'Nincs adat');
+          harvest = state.harvestTimeLeft || '';
+          if (state.status === 'harvest') { stateText = 'Aratásra kész'; color = '#00e676'; }
+          else if (state.status === 'water') { stateText = 'Locsolandó'; color = '#ff0055'; }
+          else { stateText = 'Fejlődik'; color = '#00f3ff'; }
+        }
+        activeParcels.push('<div style="padding:12px; background:rgba(15,26,48,.8); border-radius:8px; border:1px solid ' + color + '; text-align:left; min-height:118px">' +
+          '<div style="font-size:.75rem;color:#94a3b8">Parcella #' + p + '</div>' +
+          '<div style="font-weight:800;color:' + color + ';margin:4px 0">' + stateText + '</div>' +
+          '<div style="font-size:.8rem">🌱 ' + escapeHtml(crop) + '</div>' +
+          '<div style="font-size:.75rem;color:#cbd5e1;margin-top:5px">💧 ' + escapeHtml(water) + '</div>' +
+          (harvest ? '<div style="font-size:.75rem;color:#cbd5e1">🚜 ' + escapeHtml(harvest) + '</div>' : '') +
+          '</div>');
+      }
+      html += '<div class="card-container" style="margin-top:0!important;margin-bottom:18px!important">' +
+        '<div style="display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:12px"><div><h4 style="color:#f8fafc">🏡 ' + escapeHtml(farmName) + '</h4><div style="color:#94a3b8;font-size:.82rem">' + parcels + ' aktív parcella · Tulaj: ' + escapeHtml(farm.contactIgName || 'nincs megadva') + '</div></div>' +
+        '<button type="button" class="btn-debug-toggle" onclick="openFarmEditModal(' + farmIndex + ')">Farm szerkesztése</button></div>' +
+        '<div style="display:grid;grid-template-columns:repeat(' + parcels + ',minmax(130px,1fr));gap:10px">' + activeParcels.join('') + '</div></div>';
+    });
+    mapBox.innerHTML = html;
+  }
+
+  function openFarmEditModal(index) {
+    var farm = editableFarms[index];
+    var modal = document.getElementById('farmEditModal');
+    if (!farm || !modal) { reportProblem('A farm szerkesztő nem nyitható meg'); return; }
+    document.getElementById('editFarmId').value = farm.fullName || farm.name;
+    document.getElementById('editFarmName').value = farm.fullName || farm.name;
+    document.getElementById('farmEditModalSub').textContent = farm.fullName || farm.name;
+    document.getElementById('editFarmOwnership').value = farm.type || 'sajat';
+    document.getElementById('editGreenhouseNum').value = farm.greenhouseNum || '';
+    document.getElementById('editFloorNum').value = farm.floorNum || '';
+    document.getElementById('editDoorNum').value = farm.doorNum || '';
+    document.getElementById('editFarmSize').value = String(farm.size || (farm.parcelCount === 4 ? 80 : 120));
+    document.getElementById('editOwnerIgName').value = farm.contactIgName || '';
+    document.getElementById('editRentPrice').value = farm.rentPrice || '';
+    document.getElementById('editContactDiscord').value = farm.contactDiscord || '';
+    document.getElementById('editContactPhone').value = farm.contactPhone || '';
+    document.getElementById('editSystemRentExpiry').value = String(farm.systemRentExpiry || '').replace(' ', 'T').slice(0, 16);
+    document.getElementById('editPlayerRentDueDate').value = String(farm.playerRentDueDate || '').replace(' ', 'T').slice(0, 16);
+    toggleFarmOwnershipFields();
+    modal.style.display = 'flex';
+  }
+
+  function closeFarmEditModal() { document.getElementById('farmEditModal').style.display = 'none'; }
+  function toggleFarmOwnershipFields() {
+    var rented = document.getElementById('editFarmOwnership').value === 'berelt';
+    document.getElementById('ownFarmSection').style.display = rented ? 'none' : 'block';
+    document.getElementById('rentedFarmSection').style.display = rented ? 'block' : 'none';
+  }
+  function handleSaveFarmEdit(event) {
+    event.preventDefault();
+    var form = document.getElementById('farmEditForm');
+    var data = {};
+    new FormData(form).forEach(function(value, key) { data[key] = value; });
+    var status = document.getElementById('farmEditStatusMsg');
+    status.style.display = 'block'; status.textContent = 'Mentés folyamatban…';
+    google.script.run.withSuccessHandler(function(message) {
+      status.textContent = message || 'Farmadatok elmentve.';
+      loadDashboardData();
+      setTimeout(closeFarmEditModal, 700);
+    }).withFailureHandler(function(error) {
+      reportProblem('A farmadatok mentése nem sikerült', error);
+      status.textContent = 'Hiba: ' + (error.message || error);
+    }).updateFarmDetails(data);
+  }
+
+  // A dashboard válaszból eltárolja a parcellák aktuális időzítő- és növényadatait.
+  var previousRenderAllViews = renderAllViews;
+  renderAllViews = function(data) {
+    latestTimerMap = data && data.timersData && data.timersData.mapData ? data.timersData.mapData : {};
+    previousRenderAllViews(data);
+  };
 </script>

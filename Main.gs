@@ -216,7 +216,7 @@ function saveSettings(settings) {
 ========================== */
 
 function getFarmsList() {
-  return FarmModule.getAllFarms();
+  return FarmModule.getFarmsList();
 }
 
 function createFarm(data) {
@@ -248,7 +248,7 @@ function refreshFarmStatus() {
 }
 
 function getDashboardStats() {
-  return FarmModule.getDashboardStats();
+  return DashboardModule.getDashboardStats();
 }
 
 function getNotifications() {

@@ -51,7 +51,7 @@ var AdminModule = (function () {
       var worker = String(row[1] || '').trim();
       var action = String(row[3] || '').trim();
       // JAVÍTÁS: Az Érték oszlop a row[5] (6. oszlop), nem a row[6]!
-      var value = Number(row[5]) || 0;
+      var value = Number(row[6]) || 0;
 
       if (balances.hasOwnProperty(worker)) {
         // Az eladásokat és értékesítéseket nem számítjuk bele a dolgozó személyes egyenlegébe
@@ -84,7 +84,7 @@ var AdminModule = (function () {
     rawData.forEach(function(row) {
       var w = String(row[1] || '').trim();
       var action = String(row[3] || '').trim();
-      var val = Number(row[5] || 0); // JAVÍTÁS: row[5] az érték
+      var val = Number(row[6] || 0);
       if (w === workerName && action.indexOf('Eladás') === -1 && action.indexOf('Értékesítés') === -1 && action.indexOf('Vásárlás') === -1) {
         currentBalance += val;
       }

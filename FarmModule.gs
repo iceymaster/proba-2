@@ -31,8 +31,19 @@ var FarmModule = (function () {
             rentPrice: 0,
             contactIgName: "",
             contactDiscord: "",
-            contactPhone: ""
+            contactPhone: "",
+            parcelCount: 6,
+            greenhouseNum: "",
+            floorNum: "",
+            doorNum: ""
           };
+
+          var locationMatch = farmName.match(/\u00dcvegh\u00e1z:\s*([0-9]+)\.\s*\/\s*([0-9]+)\.\s*emelet\)\s*\[?([^\]\)]*)\]?/i);
+          if (locationMatch) {
+            farmMap[farmName].greenhouseNum = locationMatch[1];
+            farmMap[farmName].floorNum = locationMatch[2];
+            farmMap[farmName].doorNum = locationMatch[3] || '';
+          }
         }
 
         // Bérleti idő kiolvasása a megjegyzésekből
@@ -48,7 +59,10 @@ var FarmModule = (function () {
         // Részletes farm adatok kiolvasása
         if (note.indexOf('FARM SZERKESZTÉS') !== -1) {
           if (note.indexOf('Méret: 120') !== -1) farmMap[farmName].size = 120;
+          if (note.indexOf('Méret: 80') !== -1) farmMap[farmName].size = 80;
+          farmMap[farmName].parcelCount = farmMap[farmName].size === 80 ? 4 : 6;
           if (note.indexOf('Típus: berelt') !== -1) farmMap[farmName].type = 'berelt';
+          if (note.indexOf('Tulajdonos: ') !== -1) farmMap[farmName].contactIgName = note.split('Tulajdonos: ')[1].split(' | ')[0].trim();
           if (note.indexOf('Discord: ') !== -1) farmMap[farmName].contactDiscord = note.split('Discord: ')[1].split(' | ')[0].trim();
           if (note.indexOf('Tel: ') !== -1) farmMap[farmName].contactPhone = note.split('Tel: ')[1].split(' | ')[0].trim();
           if (note.indexOf('Ár: ') !== -1) farmMap[farmName].rentPrice = Number(note.split('Ár: ')[1].split(' | ')[0].replace(/[^0-9]/g, '')) || 0;
@@ -117,18 +131,16 @@ var FarmModule = (function () {
   function updateFarmDetails(formData) {
     if (!formData) return "❌ Hibás adatok!";
 
-    var fullName = "";
-    if (formData.ownerIgName && formData.farmOwnership === 'berelt') {
-      fullName = formData.ownerIgName + " (Üvegház: " + formData.greenhouseNum + ". / " + formData.floorNum + ". emelet) [" + formData.doorNum + "]";
-    } else {
-      fullName = "[] Farming (Üvegház: " + formData.greenhouseNum + ". / " + formData.floorNum + ". emelet) [" + formData.doorNum + "]";
-    }
+    var fullName = String(formData.farmName || formData.farmId || '').trim();
+    if (!fullName) return "Farm name is missing.";
 
     var expiryDate = (formData.farmOwnership === 'sajat') ? formData.systemRentExpiry : formData.playerRentDueDate;
     var formattedExpiry = expiryDate ? expiryDate.replace('T', ' ') : '';
 
-    var note = "FARM SZERKESZTÉS | Méret: " + (formData.size || 80) + " ültetőhely" +
+    var farmSize = Number(formData.farmSize || formData.size || 80);
+    var note = "FARM SZERKESZTÉS | Méret: " + farmSize + " ültetőhely" +
                " | Típus: " + (formData.farmOwnership || 'sajat') +
+               (formData.ownerIgName ? " | Tulajdonos: " + formData.ownerIgName : "") +
                (formattedExpiry ? " | Bérlet lejár: " + formattedExpiry : "") +
                (formData.contactDiscord ? " | Discord: " + formData.contactDiscord : "") +
                (formData.contactPhone ? " | Tel: " + formData.contactPhone : "") +

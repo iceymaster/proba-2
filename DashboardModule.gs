@@ -112,9 +112,14 @@ var DashboardModule = (function () {
           var fObj = (typeof farm === 'object') ? farm : { name: farm };
 
           var farmData = {
+            id: fObj.id || fObj.fullName || fObj.name || String(farm),
             name: fObj.name || fObj.fullName || String(farm),
             fullName: fObj.fullName || fObj.name || String(farm),
             size: Number(fObj.size || 80),
+            parcelCount: Number(fObj.parcelCount || (Number(fObj.size) === 80 ? 4 : 6)),
+            greenhouseNum: fObj.greenhouseNum || '',
+            floorNum: fObj.floorNum || '',
+            doorNum: fObj.doorNum || '',
             type: fObj.type || 'sajat',
             systemRentExpiry: fObj.systemRentExpiry || fObj.leaseExpireDate || '',
             playerRentDueDate: fObj.playerRentDueDate || '',

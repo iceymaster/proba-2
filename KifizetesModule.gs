@@ -13,7 +13,7 @@ var KifizetesModule = (function () {
       var user = String(row[1] || "").trim();
       var action = String(row[3] || "").trim();
       var details = String(row[4] || "").trim();
-      var val = Math.abs(Number(row[5]) || 0);
+      var val = Math.abs(Number(row[6]) || 0);
 
       // Dolgozó tisztítása (ha admin utótag lenne benne)
       var cleanUser = user.replace(/\(Kifizető Admin\)/g, '').trim();
