@@ -1,0 +1,85 @@
+<div id="farmEditModal" class="auth-overlay" style="display: none;">
+  <div class="auth-card" style="max-width: 550px;">
+    <h3>🏡 Farm Szerkesztése & Bérlet Kezelése</h3>
+    <p class="subtitle" id="farmEditModalSub">Farm részletes adatainak módosítása</p>
+
+    <form id="farmEditForm" onsubmit="handleSaveFarmEdit(event)">
+      <input type="hidden" id="editFarmId" name="farmId">
+
+      <div class="form-group">
+        <label>Farm Típusa / Tulajdonjog:</label>
+        <select id="editFarmOwnership" name="farmOwnership" onchange="toggleFarmOwnershipFields()">
+          <option value="sajat">🟢 Saját Farm (Rendszer bérlet)</option>
+          <option value="berelt">🔵 Más játékostól bérelt farm</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group half">
+          <label>Üvegház száma:</label>
+          <input type="number" id="editGreenhouseNum" name="greenhouseNum" placeholder="pl. 5" required>
+        </div>
+        <div class="form-group half">
+          <label>Emelet száma:</label>
+          <input type="number" id="editFloorNum" name="floorNum" placeholder="pl. 11" required>
+        </div>
+        <div class="form-group half">
+          <label>Ajtó / Aknaszám:</label>
+          <input type="text" id="editDoorNum" name="doorNum" placeholder="pl. [#1]" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Farm Mérete (Kapacitás):</label>
+        <select id="editFarmSize" name="farmSize">
+          <option value="80">Kicsi Farm (80 ültetőhely / 4 parcella)</option>
+          <option value="120">Nagy Farm (120 ültetőhely / 6 parcella)</option>
+        </select>
+      </div>
+
+      <div id="ownFarmSection" class="sub-section">
+        <label style="color:#38bdf8;">📅 Rendszer Bérlet Lejárata (Saját Farm):</label>
+        <input type="datetime-local" id="editSystemRentExpiry" name="systemRentExpiry">
+      </div>
+
+      <div id="rentedFarmSection" class="sub-section" style="display: none;">
+        <label style="color:#f59e0b;">👤 Tulajdonos Adatai & Bérlet:</label>
+        
+        <div class="form-row">
+          <div class="form-group half">
+            <label>Tulajdonos IG Neve:</label>
+            <input type="text" id="editOwnerIgName" name="ownerIgName" placeholder="pl. Lorenzo Di Falconata">
+          </div>
+          <div class="form-group half">
+            <label>Bérleti Díj (Ft):</label>
+            <input type="number" id="editRentPrice" name="rentPrice" placeholder="pl. 500000">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Fizetési Határidő (Mikor kell fizetned?):</label>
+          <input type="datetime-local" id="editPlayerRentDueDate" name="playerRentDueDate">
+        </div>
+
+        <label style="color:#38bdf8; margin-top:10px;">📞 Elérhetőségek:</label>
+        <div class="form-row">
+          <div class="form-group half">
+            <label>Discord Név:</label>
+            <input type="text" id="editContactDiscord" name="contactDiscord" placeholder="pl. user#1234">
+          </div>
+          <div class="form-group half">
+            <label>Telefonszám (IG Phone):</label>
+            <input type="text" id="editContactPhone" name="contactPhone" placeholder="pl. 38761100000">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-top:15px;">
+        <button type="submit" class="btn-primary" style="flex:1;">💾 Mentés</button>
+        <button type="button" onclick="closeFarmEditModal()" style="flex:1; background:#475569; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Mégse</button>
+      </div>
+
+      <div id="farmEditStatusMsg" class="status-msg"></div>
+    </form>
+  </div>
+</div>

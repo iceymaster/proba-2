@@ -1,27 +1,57 @@
-var FarmModule = (function() {
+var FarmModule = (function () {
 
+  // 1. Farmok listájának kiolvasása és összefűzése
   function getFarmsList() {
-    var rawData = AdatbazisModule.getRawData();
+    var rawData = [];
+    try {
+      rawData = AdatbazisModule.getRawData() || [];
+    } catch(e) {
+      Logger.log("Hiba a farmok kiolvasásakor: " + e.message);
+      return [];
+    }
+
     var farmMap = {};
 
     rawData.forEach(function(row) {
+      if (!row || row.length < 3) return;
+      
       var farmName = String(row[2] || '').trim();
       var note = String(row[7] || '');
 
-      if (farmName && farmName !== '- Global / Raktár' && farmName !== 'Farm') {
+      if (farmName && farmName !== '- Global / Raktár' && farmName !== 'Farm' && farmName !== '-') {
         if (!farmMap[farmName]) {
           farmMap[farmName] = {
             fullName: farmName,
-            leaseExpireDate: ""
+            name: farmName,
+            size: 80,
+            type: 'sajat',
+            leaseExpireDate: "",
+            systemRentExpiry: "",
+            playerRentDueDate: "",
+            rentPrice: 0,
+            contactIgName: "",
+            contactDiscord: "",
+            contactPhone: ""
           };
         }
 
+        // Bérleti idő kiolvasása a megjegyzésekből
         if (note.indexOf('Bérlet lejár: ') !== -1) {
           var parts = note.split('Bérlet lejár: ');
           if (parts[1]) {
             var dateStr = parts[1].split(' | ')[0].trim();
             farmMap[farmName].leaseExpireDate = dateStr;
+            farmMap[farmName].systemRentExpiry = dateStr;
           }
+        }
+
+        // Részletes farm adatok kiolvasása
+        if (note.indexOf('FARM SZERKESZTÉS') !== -1) {
+          if (note.indexOf('Méret: 120') !== -1) farmMap[farmName].size = 120;
+          if (note.indexOf('Típus: berelt') !== -1) farmMap[farmName].type = 'berelt';
+          if (note.indexOf('Discord: ') !== -1) farmMap[farmName].contactDiscord = note.split('Discord: ')[1].split(' | ')[0].trim();
+          if (note.indexOf('Tel: ') !== -1) farmMap[farmName].contactPhone = note.split('Tel: ')[1].split(' | ')[0].trim();
+          if (note.indexOf('Ár: ') !== -1) farmMap[farmName].rentPrice = Number(note.split('Ár: ')[1].split(' | ')[0].replace(/[^0-9]/g, '')) || 0;
         }
       }
     });
@@ -34,12 +64,88 @@ var FarmModule = (function() {
     return farms;
   }
 
+  // 2. Lejáró bérletek ellenőrzése (48 óra / 2 nap)
+  function checkExpiringRentals() {
+    var rawData = [];
+    try {
+      rawData = AdatbazisModule.getRawData() || [];
+    } catch(e) {
+      return [];
+    }
+
+    var now = new Date();
+    var warningWindow = 48 * 60 * 60 * 1000; // 48 óra
+
+    var warnings = [];
+
+    rawData.forEach(function (row) {
+      if (!row || row.length < 8) return;
+      var farmName = String(row[2] || '').trim();
+      var note = String(row[7] || '');
+
+      if (note.indexOf('Bérlet lejár: ') !== -1) {
+        var dateStr = note.split('Bérlet lejár: ')[1].split(' | ')[0].trim();
+        var expiryDate = new Date(dateStr.replace(/\./g, '-'));
+
+        if (!isNaN(expiryDate.getTime())) {
+          var diff = expiryDate.getTime() - now.getTime();
+
+          if (diff > 0 && diff <= warningWindow) {
+            var hoursLeft = Math.round(diff / (1000 * 60 * 60));
+            warnings.push({
+              farm: farmName,
+              expiry: dateStr,
+              hoursLeft: hoursLeft,
+              type: 'WARNING_2_DAYS'
+            });
+          } else if (diff <= 0 && diff >= - (24 * 60 * 60 * 1000)) {
+            warnings.push({
+              farm: farmName,
+              expiry: dateStr,
+              hoursLeft: 0,
+              type: 'EXPIRED'
+            });
+          }
+        }
+      }
+    });
+
+    return warnings;
+  }
+
+  // 3. Farm adatok rögzítése / frissítése
+  function updateFarmDetails(formData) {
+    if (!formData) return "❌ Hibás adatok!";
+
+    var fullName = "";
+    if (formData.ownerIgName && formData.farmOwnership === 'berelt') {
+      fullName = formData.ownerIgName + " (Üvegház: " + formData.greenhouseNum + ". / " + formData.floorNum + ". emelet) [" + formData.doorNum + "]";
+    } else {
+      fullName = "[] Farming (Üvegház: " + formData.greenhouseNum + ". / " + formData.floorNum + ". emelet) [" + formData.doorNum + "]";
+    }
+
+    var expiryDate = (formData.farmOwnership === 'sajat') ? formData.systemRentExpiry : formData.playerRentDueDate;
+    var formattedExpiry = expiryDate ? expiryDate.replace('T', ' ') : '';
+
+    var note = "FARM SZERKESZTÉS | Méret: " + (formData.size || 80) + " ültetőhely" +
+               " | Típus: " + (formData.farmOwnership || 'sajat') +
+               (formattedExpiry ? " | Bérlet lejár: " + formattedExpiry : "") +
+               (formData.contactDiscord ? " | Discord: " + formData.contactDiscord : "") +
+               (formData.contactPhone ? " | Tel: " + formData.contactPhone : "") +
+               (formData.rentPrice ? " | Ár: " + formData.rentPrice + " Ft" : "");
+
+    AdatbazisModule.addLogRow("Rendszer", fullName, "Infó", "-", "-", 0, note);
+
+    return "✅ Farm adatai sikeresen elmentve!";
+  }
+
+  // 4. Dolgozók listája
   function getWorkersList() {
     if (typeof AdminModule !== 'undefined' && typeof AdminModule.getRegisteredWorkersList === 'function') {
       return AdminModule.getRegisteredWorkersList();
     }
 
-    var rawData = AdatbazisModule.getRawData();
+    var rawData = AdatbazisModule.getRawData() || [];
     var workersSet = {};
 
     rawData.forEach(function(row) {
@@ -52,152 +158,27 @@ var FarmModule = (function() {
     return Object.keys(workersSet);
   }
 
-  // 👑 ADMIN: Parcella állapotának felülírása (0 Ft pénzmozgással, támogatva az ültetést és locsolást)
-  function updateParcelStateAdmin(farmName, parcelNum, crop, status, user, customDate) {
-    if (!farmName || !parcelNum) return "❌ Érvénytelen farm vagy parcella szám!";
-
-    var action = "Locsolás";
-    var note = "Locsolva (Admin módosítás)";
-    var value = 0; // 0 Ft, hogy senkinek ne írjon jóvá semmit!
-
-    // Ha az admin ültetve/növekedésben lévő állapotot választ
-    if (status === "planting" || status === "growing") {
-      action = "Ültetés";
-      note = "Beültetve (Admin módosítás)";
-    } else if (status === "harvest") {
-      action = "Aratás";
-      note = "Aratva (Admin módosítás)";
-    }
-
-    if (customDate) {
-      var d = new Date(customDate);
-      if (!isNaN(d.getTime())) {
-        var dateFormatted = Utilities.formatDate(d, "GMT+3", "yyyy.MM.dd HH:mm");
-        note += " | Időpont: " + dateFormatted;
-      }
-    }
-
-    var logUser = user || "Isido Maestro";
-    var cleanParcels = String(parcelNum).replace(/'/g, '').trim();
-    var parcels = "'" + cleanParcels;
-
-    return AdatbazisModule.addLogRow(logUser, farmName, action, crop || "Málna 🍇", parcels, value, note);
-  }
-
-  function saveData(formData) {
-    var action = formData.actionType;
-
-    if (typeof RaktarModule !== 'undefined' && (action === "Vásárlás" || action === "LádaÁthelyezés")) {
-      return RaktarModule.processInventory(formData);
-    }
-
-    var farm = formData.farmSelect || "- Global / Raktár";
-    var defaultUser = formData.userName || "Ismeretlen";
-    var crop = formData.cropSelect || "-";
-    var note = formData.note || "";
-    var totalValue = Number(formData.value) || 0;
-    
-    var rawParcels = formData.selectedParcelsList ? String(formData.selectedParcelsList).trim() : "-";
-    var parcels = (rawParcels !== "-" && rawParcels !== "") ? "'" + rawParcels.replace(/'/g, '') : "-";
-
-    if (action === "FarmHozzaadas") {
-      farm = formData.newFarmName || "Új Farm";
-      action = "Infó";
-      crop = "-";
-      parcels = "-";
-      note = "Új farm regisztrálva! | Bérlet lejár: " + (formData.leaseExpireDate || "Nincs megadva");
-      return AdatbazisModule.addLogRow(defaultUser, farm, action, crop, parcels, 0, note);
-    } 
-    
-    else if (action === "BérletHosszabbítás") {
-      action = "Infó";
-      crop = "-";
-      parcels = "-";
-      note = "Bérlet meghosszabbítva! | Bérlet lejár: " + (formData.leaseExpireDate || "Nincs megadva") + (note ? " | " + note : "");
-      return AdatbazisModule.addLogRow(defaultUser, farm, action, crop, parcels, 0, note);
-    }
-
-    else if (action === "Kifizetés") {
-      var adminUser = defaultUser + " (Kifizető Admin)";
-      var worker = formData.workerSelect || "Kifizetett Dolgozó";
-      note = "Kifizetve: " + worker + (note ? " | " + note : "");
-      farm = "- Global / Raktár";
-      crop = "-";
-      parcels = "-";
-      var payValue = -Math.abs(totalValue);
-      return AdatbazisModule.addLogRow(adminUser, farm, action, crop, parcels, payValue, note);
-    } 
-
-    else if (action === "Ültetés") {
-      var parcelsArr = (rawParcels !== "-" && rawParcels !== "") ? rawParcels.split(',').filter(Boolean) : [];
-      var parcelCount = parcelsArr.length || 1;
-
-      var planterNames = [];
-      Object.keys(formData).forEach(function(key) {
-        if (key.indexOf('planterName_') === 0 && formData[key]) {
-          var valName = String(formData[key]).trim();
-          if (valName !== "") {
-            planterNames.push(valName);
-          }
-        }
-      });
-
-      if (planterNames.length === 0) {
-        planterNames.push(defaultUser);
-      }
-
-      var splitValue = Math.round(totalValue / planterNames.length);
-      var isUltetesDone = (formData.stageUltetes === true || formData.stageUltetes === "true");
-
-      var baseNote = "";
-      if (isUltetesDone) {
-        var seedCount = parcelCount * 20;
-        baseNote = parcelCount + " parcella beültetve (" + seedCount + " db mag levonva)";
-      } else {
-        baseNote = "Előkészítés / Kapálás (Nincs mag levonás)";
-      }
-
-      if (note) baseNote += " | " + note;
-      if (planterNames.length > 1) {
-        baseNote += " (Megosztva " + planterNames.length + " ültető között: " + planterNames.join(', ') + ")";
-      }
-
-      for (var i = 0; i < planterNames.length; i++) {
-        var currentWorkerName = planterNames[i];
-        AdatbazisModule.addLogRow(currentWorkerName, farm, action, crop, parcels, splitValue, baseNote);
-      }
-
-      return "✅ Sikeresen rögzítve " + planterNames.length + " ültetőnek! (" + splitValue.toLocaleString('hu-HU') + " Ft / fő)";
-    } 
-
-    else if (action === "Locsolás") {
-      var locsNote = "Locsolva" + (note ? " | " + note : "");
-      return AdatbazisModule.addLogRow(defaultUser, farm, action, crop, parcels, totalValue, locsNote);
-    }
-
-    else if (action === "Aratás") {
-      var hQty = formData.harvestQty ? "Betakarított mennyiség: " + formData.harvestQty + " db" : "";
-      var aratasNote = hQty + (note ? (hQty ? " | " : "") + note : "");
-      return AdatbazisModule.addLogRow(defaultUser, farm, action, crop, parcels, totalValue, aratasNote);
-    } 
-
-    else {
-      return AdatbazisModule.addLogRow(defaultUser, farm, action, crop, parcels, totalValue, note);
-    }
-  }
-
   return {
     getFarmsList: getFarmsList,
-    getWorkersList: getWorkersList,
-    updateParcelStateAdmin: updateParcelStateAdmin,
-    saveData: saveData
+    checkExpiringRentals: checkExpiringRentals,
+    updateFarmDetails: updateFarmDetails,
+    getWorkersList: getWorkersList
   };
 
 })();
 
-function getFarmsList() { return FarmModule.getFarmsList(); }
-function getWorkersList() { return FarmModule.getWorkersList(); }
-function updateParcelStateAdmin(farmName, parcelNum, crop, status, user, customDate) { 
-  return FarmModule.updateParcelStateAdmin(farmName, parcelNum, crop, status, user, customDate); 
+function getFarmsList() {
+  return FarmModule.getFarmsList();
 }
-function saveData(formData) { return FarmModule.saveData(formData); }
+
+function checkExpiringRentals() {
+  return FarmModule.checkExpiringRentals();
+}
+
+function updateFarmDetails(formData) {
+  return FarmModule.updateFarmDetails(formData);
+}
+
+function getWorkersList() {
+  return FarmModule.getWorkersList();
+}

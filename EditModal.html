@@ -1,13 +1,13 @@
-<div id="editParcelModal" class="auth-overlay" style="display: none;">
-  <div class="auth-card">
+<div id="editParcelModal" class="auth-overlay" style="display:none; z-index: 10000;">
+  <div class="auth-card" style="max-width: 500px;">
     <h3>👑 ADMIN: Parcella & Időpont Módosítás</h3>
-    <p class="subtitle" id="editModalSub">Farm & Parcella szerkesztése</p>
+    <p class="subtitle" id="editModalSub">Farm Név — Parcella #1</p>
 
     <input type="hidden" id="editFarmName">
     <input type="hidden" id="editParcelNum">
 
     <div class="form-group">
-      <label>Növény Típusa:</label>
+      <label for="editCropSelect">🌱 Növény Típusa:</label>
       <select id="editCropSelect">
         <option value="Málna 🍇">Málna 🍇</option>
         <option value="Paradicsom 🍅">Paradicsom 🍅</option>
@@ -27,26 +27,120 @@
     </div>
 
     <div class="form-group">
-      <label>Kívánt Állapot:</label>
+      <label for="editStatusSelect">🎯 Kívánt Állapot:</label>
       <select id="editStatusSelect">
-        <option value="growing">🟦 Locsolva / Fejlődik (Alap 12h locsolás)</option>
+        <option value="growing">🌱 Ültetve (Fejlődik / Normál)</option>
         <option value="water">🟧 Locsolandó! (Azonnali kiszáradás)</option>
         <option value="harvest">🟩 Aratásra KÉSZ!</option>
         <option value="empty">⬛ Üres (Törlés / Betakarítva)</option>
       </select>
     </div>
 
-    <div class="form-group sub-section">
-      <label style="color:#38bdf8;">⏰ Utolsó Locsolás / Ültetés Időpontja:</label>
-      <input type="datetime-local" id="editCustomDate">
-      <span style="font-size:0.75rem; color:#94a3b8; display:block; margin-top:4px;">💡 Visszamenőlegesen beállíthatod a pontos időpontot.</span>
-    </div>
+    <div class="sub-section" style="background:rgba(13, 16, 23, 0.6); padding:12px; border-radius:12px; border:1px dashed var(--border-color); margin-bottom:16px;">
+      <div class="form-group">
+        <label for="editPlantedDate" style="color:#38bdf8;">🌱 Ültetés Időpontja:</label>
+        <input type="datetime-local" id="editPlantedDate">
+      </div>
 
-    <div class="form-row">
-      <button type="button" class="btn-primary" onclick="saveParcelEdit()" style="flex:1;">💾 Admin Mentés</button>
-      <button type="button" onclick="closeEditModal()" style="flex:1; background:#475569; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Mégse</button>
+      <div class="form-group" style="margin-bottom:0;">
+        <label for="editWateredDate" style="color:#38bdf8;">💧 Utolsó Locsolás Időpontja:</label>
+        <input type="datetime-local" id="editWateredDate">
+      </div>
+      <small style="color:#94a3b8; font-size:0.75rem; display:block; margin-top:8px;">
+        💡 Visszamenőlegesen és külön korrigálhatod az ültetés és a locsolás idejét.
+      </small>
     </div>
 
     <div id="editStatusMsg" class="status-msg"></div>
+
+    <div class="form-row" style="display:flex; gap:10px; margin-top:20px;">
+      <button type="button" class="btn-primary" onclick="saveParcelEdit()" style="flex:1;">💾 Admin Mentés</button>
+      <button type="button" onclick="closeEditModal()" style="flex:1; background:#475569; color:#fff; border:none; border-radius:10px; cursor:pointer; font-weight:bold;">Mégse</button>
+    </div>
   </div>
 </div>
+
+<script>
+  function openEditModal(farmName, parcelNum, currentCrop, currentStatus, lastWateredAt) {
+    var realIsAdmin = (currentUserSession && currentUserSession.isAdmin);
+    var effectiveIsAdmin = realIsAdmin && !isPreviewMode;
+
+    if (!effectiveIsAdmin) return;
+
+    var modal = document.getElementById('editParcelModal');
+    if (!modal) {
+      alert("❌ Hiba: Az EditModal elem nem található a lapon!");
+      return;
+    }
+
+    document.getElementById('editFarmName').value = farmName;
+    document.getElementById('editParcelNum').value = parcelNum;
+    document.getElementById('editModalSub').innerText = farmName + " — Parcella #" + parcelNum;
+    
+    if (currentCrop && currentCrop !== 'Üres') {
+      var cropSelect = document.getElementById('editCropSelect');
+      if (cropSelect) cropSelect.value = currentCrop;
+    }
+
+    var statusSelect = document.getElementById('editStatusSelect');
+    if (statusSelect) statusSelect.value = currentStatus || 'growing';
+
+    var now = new Date();
+    var year = now.getFullYear();
+    var month = String(now.getMonth() + 1).padStart(2, '0');
+    var day = String(now.getDate()).padStart(2, '0');
+    var hours = String(now.getHours()).padStart(2, '0');
+    var minutes = String(now.getMinutes()).padStart(2, '0');
+    var defaultFormatted = year + "-" + month + "-" + day + "T" + hours + ":" + minutes;
+
+    var pDateInput = document.getElementById('editPlantedDate');
+    var wDateInput = document.getElementById('editWateredDate');
+
+    if (pDateInput) pDateInput.value = lastWateredAt || defaultFormatted;
+    if (wDateInput) wDateInput.value = lastWateredAt || defaultFormatted;
+
+    var msg = document.getElementById('editStatusMsg');
+    if (msg) {
+      msg.style.display = 'none';
+      msg.className = 'status-msg';
+      msg.innerText = '';
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  function closeEditModal() {
+    var modal = document.getElementById('editParcelModal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function saveParcelEdit() {
+    var farmName = document.getElementById('editFarmName').value;
+    var parcelNum = document.getElementById('editParcelNum').value;
+    var crop = document.getElementById('editCropSelect').value;
+    var status = document.getElementById('editStatusSelect').value;
+    var plantedDate = document.getElementById('editPlantedDate').value;
+    var wateredDate = document.getElementById('editWateredDate').value;
+    var user = currentUserSession ? currentUserSession.igName : 'Admin';
+    var msg = document.getElementById('editStatusMsg');
+
+    if (!msg) return;
+
+    msg.className = 'status-msg';
+    msg.style.display = 'block';
+    msg.innerText = '⏳ Admin frissítés folyamatban...';
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        msg.className = 'status-msg success';
+        msg.innerText = res || '✅ Módosítva!';
+        if (typeof loadDashboardData === 'function') loadDashboardData();
+        setTimeout(function() { closeEditModal(); }, 1000);
+      })
+      .withFailureHandler(function(err) {
+        msg.className = 'status-msg error';
+        msg.innerText = '❌ Hiba történt: ' + (err.message || err);
+      })
+      .updateParcelStateAdmin(farmName, parcelNum, crop, status, user, wateredDate, plantedDate);
+  }
+</script>

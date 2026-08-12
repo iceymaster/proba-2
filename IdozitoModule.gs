@@ -1,7 +1,21 @@
 var IdozitoModule = (function () {
 
-  var DEFAULT_WATER_HOURS = 12;
-  var DEFAULT_GROW_HOURS = 60;
+  var DEFAULT_CROP_TIMES = {
+    'Málna 🍇': { waterHours: 12, growHours: 24 },
+    'Paradicsom 🍅': { waterHours: 12, growHours: 42 },
+    'Eper 🍓': { waterHours: 12, growHours: 24 },
+    'Sütőtök 🎃': { waterHours: 12, growHours: 48 },
+    'Görögdinnye 🍉': { waterHours: 12, growHours: 48 },
+    'Sárgadinnye 🍈': { waterHours: 12, growHours: 48 },
+    'Uborka 🥒': { waterHours: 12, growHours: 24 },
+    'TV paprika 🫑': { waterHours: 12, growHours: 36 },
+    'Chilipaprika 🌶️': { waterHours: 12, growHours: 36 },
+    'Almapaprika 🫑': { waterHours: 12, growHours: 36 },
+    'Búza 🌾': { waterHours: 12, growHours: 24 },
+    'Kukorica 🌽': { waterHours: 12, growHours: 36 },
+    'Kender 🌿': { waterHours: 12, growHours: 48 },
+    'Kókacserje 🍃': { waterHours: 12, growHours: 48 }
+  };
 
   function parseDate(dateStr) {
     if (!dateStr) return null;
@@ -12,8 +26,9 @@ var IdozitoModule = (function () {
   }
 
   function getActiveTimers() {
-    var rawData = AdatbazisModule.getRawData();
+    var rawData = AdatbazisModule.getRawData() || [];
     var now = new Date();
+    var nowMs = now.getTime();
 
     var state = {};
 
@@ -32,7 +47,7 @@ var IdozitoModule = (function () {
       var parcelList = [];
       if (parcelsRaw && parcelsRaw !== "-") {
         var cleanStr = parcelsRaw.replace(/'/g, '').replace(/\./g, ',').replace(/#/g, '');
-        parcelList = cleanStr.split(',').map(function(p) { return p.trim(); }).filter(Boolean);
+        parcelList = cleanStr.split(',').map(function (p) { return p.trim(); }).filter(Boolean);
       }
 
       if (parcelList.length === 0 && action.indexOf("Ültetés") !== -1) {
@@ -44,11 +59,11 @@ var IdozitoModule = (function () {
       parcelList.forEach(function (pNum) {
         var key = farm + " [#" + pNum + "]";
 
-        // Ha admin módosításról / korrekcióról van szó, közvetlenül felülírjuk a státuszt
+        // Admin manuális módosítások
         if (note.indexOf("Admin korrekció") !== -1 || note.indexOf("ADMIN PARCELLA FELÜLÍRÁS") !== -1 || user.indexOf("Admin") !== -1) {
-          var forcedStatus = "growing"; // Alapból kék (Locsolva / Fejlődik)
-          var forcedCrop = (crop && crop !== "-") ? crop : "Málna 🍇";
-          
+          var forcedStatus = "growing";
+          var forcedCrop = (crop && crop !== "-") ? crop : (state[key] ? state[key].crop : "Málna 🍇");
+
           if (note.indexOf("Állapot: water") !== -1 || note.indexOf("Locsolandó") !== -1) {
             forcedStatus = "water";
           } else if (note.indexOf("Állapot: harvest") !== -1 || note.indexOf("Aratásra KÉSZ") !== -1) {
@@ -93,11 +108,12 @@ var IdozitoModule = (function () {
               lastWateredAt: rowDate,
               status: "Ültetve / Locsolva",
               user: user,
-              crop: (crop && crop !== "-") ? crop : "Növény",
+              crop: (crop && crop !== "-") ? crop : "Málna 🍇",
               forcedTileStatus: null
             };
           }
         } else if (action.indexOf("Locsolás") !== -1 && state[key]) {
+          // FONTOS: Megőrizzük az eredeti növényt (crop), csak a locsolás idejét frissítjük!
           state[key].lastWateredAt = rowDate;
           state[key].status = "Locsolva";
           state[key].user = user;
@@ -115,40 +131,49 @@ var IdozitoModule = (function () {
       var item = state[key];
       var lastWater = item.lastWateredAt;
       var planted = item.plantedAt;
+      var cropName = item.crop;
+
+      var profile = DEFAULT_CROP_TIMES[cropName] || { waterHours: 12, growHours: 24 };
+
+      var waterSecLeft = 0;
+      var harvestSecLeft = 0;
 
       var isWaterNeeded = false;
       var isReadyToHarvest = false;
 
       var waterTimeLeftStr = "⚠️ Locsolandó!";
       if (lastWater) {
-        var nextWaterDate = new Date(lastWater.getTime() + (DEFAULT_WATER_HOURS * 60 * 60 * 1000));
-        var diffWaterMs = nextWaterDate - now;
+        var nextWaterMs = lastWater.getTime() + (profile.waterHours * 60 * 60 * 1000);
+        var diffWaterMs = nextWaterMs - nowMs;
 
         if (diffWaterMs > 0) {
+          waterSecLeft = Math.floor(diffWaterMs / 1000);
           var wHours = Math.floor(diffWaterMs / (1000 * 60 * 60));
           var wMins = Math.floor((diffWaterMs % (1000 * 60 * 60)) / (1000 * 60));
           waterTimeLeftStr = "💧 Locsolás: " + wHours + "ó " + wMins + "p";
         } else {
           isWaterNeeded = true;
+          waterSecLeft = 0;
         }
       }
 
       var harvestTimeLeftStr = "Ismeretlen";
       if (planted) {
-        var readyDate = new Date(planted.getTime() + (DEFAULT_GROW_HOURS * 60 * 60 * 1000));
-        var diffHarvestMs = readyDate - now;
+        var readyMs = planted.getTime() + (profile.growHours * 60 * 60 * 1000);
+        var diffHarvestMs = readyMs - nowMs;
 
         if (diffHarvestMs > 0) {
+          harvestSecLeft = Math.floor(diffHarvestMs / 1000);
           var hDays = Math.floor(diffHarvestMs / (1000 * 60 * 60 * 24));
           var hHours = Math.floor((diffHarvestMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
           harvestTimeLeftStr = "🚜 Aratás: " + (hDays > 0 ? hDays + "n " : "") + hHours + "ó múlva";
         } else {
           harvestTimeLeftStr = "🌾 Aratásra KÉSZ!";
           isReadyToHarvest = true;
+          harvestSecLeft = 0;
         }
       }
 
-      // Ha van kényszerített admin státusz, azt használjuk, különben a számítottat
       var tileStatus = item.forcedTileStatus ? item.forcedTileStatus : "growing";
       if (!item.forcedTileStatus) {
         if (isReadyToHarvest) tileStatus = "harvest";
@@ -158,9 +183,14 @@ var IdozitoModule = (function () {
       if (!mapData[item.farm]) {
         mapData[item.farm] = {};
       }
+
       mapData[item.farm][String(item.parcel)] = {
         crop: item.crop,
         status: tileStatus,
+        waterSecLeft: waterSecLeft,
+        harvestSecLeft: harvestSecLeft,
+        waterTimeLeft: waterTimeLeftStr,
+        harvestTimeLeft: harvestTimeLeftStr,
         lastWateredAt: item.lastWateredAt ? Utilities.formatDate(item.lastWateredAt, "GMT+3", "yyyy-MM-dd'T'HH:mm") : ""
       };
 
@@ -169,6 +199,8 @@ var IdozitoModule = (function () {
         crop: item.crop,
         status: item.status,
         user: item.user,
+        waterSecLeft: waterSecLeft,
+        harvestSecLeft: harvestSecLeft,
         timeLeft: waterTimeLeftStr + " | " + harvestTimeLeftStr
       });
     });
@@ -183,8 +215,3 @@ var IdozitoModule = (function () {
 })();
 
 function getActiveTimers() { return IdozitoModule.getActiveTimers(); }
-
-function tesztIdozito() {
-  var eredmeny = IdozitoModule.getActiveTimers();
-  Logger.log(JSON.stringify(eredmeny, null, 2));
-}

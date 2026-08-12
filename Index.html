@@ -1,234 +1,253 @@
 <!DOCTYPE html>
 <html lang="hu">
 <head>
-  <base target="_top">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SeeRPG Farm Dashboard</title>
+  <title>SeeRPG Farm System</title>
   <?!= include('Styles'); ?>
 </head>
-<body>
 
-  <?!= include('EditModal'); ?>
+  <!-- AUTH MODAL -->
   <?!= include('AuthModal'); ?>
 
-  <!-- DASHBOARD APPLICATION -->
-  <div id="dashboardApp" class="dashboard-grid" style="display: none;">
-    <div class="left-column">
-      <div class="card">
-        <div class="user-badge">
-          <span>👤 Bejelentkezve mint: <strong id="currentUserDisplay" style="color:#38bdf8;">-</strong></span>
-          <button onclick="logout()" style="padding:4px 8px; background:#991b1b; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.75rem;">Kijelentkezés</button>
+  <div id="dashboardApp" class="app-layout" style="display: none;">
+    
+    <!-- BAL OLDALI SIDEBAR MENU -->
+    <aside class="sidebar-menu">
+      <div class="brand-logo">
+        <span class="icon">🌱</span>
+        <span class="title">SeeRPG Farm System</span>
+      </div>
+
+      <ul class="nav-list">
+        <li class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')">
+          <div class="left"><span>📊</span> Vezérlőpult</div>
+        </li>
+        <li class="nav-item" data-tab="farms" onclick="switchTab('farms')">
+          <div class="left"><span>🏡</span> Farmjaim / Térkép</div>
+          <span class="badge success" id="badgeActiveFarms">0</span>
+        </li>
+        <li class="nav-item" data-tab="ultetes" onclick="switchTab('ultetes')">
+          <div class="left"><span>🌱</span> Ültetés</div>
+        </li>
+        <li class="nav-item" data-tab="locsolas" onclick="switchTab('locsolas')">
+          <div class="left"><span>💧</span> Locsolás</div>
+          <span class="badge warning" id="badgeWaterNeeded">0</span>
+        </li>
+        <li class="nav-item" data-tab="aratas" onclick="switchTab('aratas')">
+          <div class="left"><span>🚜</span> Aratás</div>
+          <span class="badge success" id="badgeReadyHarvest">0</span>
+        </li>
+        <li class="nav-item" data-tab="eladas" onclick="switchTab('eladas')">
+          <div class="left"><span>💰</span> Eladás & Bevétel</div>
+        </li>
+        <li class="nav-item" data-tab="stock" onclick="switchTab('stock')">
+          <div class="left"><span>📦</span> Raktár / Magok</div>
+        </li>
+        <li class="nav-item" data-tab="alerts" onclick="switchTab('alerts')">
+          <div class="left"><span>⚠️</span> Lejáró Bérletek</div>
+          <span class="badge alert" id="badgeLeaseAlerts">0</span>
+        </li>
+        <li class="nav-item" data-tab="workers" onclick="switchTab('workers')">
+          <div class="left"><span>👤</span> Munkások / Egyenleg</div>
+          <span class="badge info" id="badgeUnpaidWorkers">0 Ft</span>
+        </li>
+      </ul>
+
+      <!-- BEJELENTKEZETT FELHASZNÁLÓ -->
+      <div class="user-card">
+        <div class="user-info">
+          <span class="user-name" id="currentUserDisplay">-</span>
+          <span class="user-role">Bejelentkezve</span>
         </div>
+        <button type="button" class="btn-logout" onclick="logout()" title="Kijelentkezés">🚪</button>
+      </div>
+    </aside>
 
-        <h2>🌱 Farm Esemény Rögzítése</h2>
-        <p class="subtitle">Események és tevékenységek naplózása</p>
+    <!-- KÖZÉPSŐ FŐ TARTALOM -->
+    <main class="main-viewport">
+      <div class="top-header-bar">
+        <h2 id="currentTabTitle">📊 Vezérlőpult</h2>
+        <button id="viewModeBtn" type="button" class="btn-view-toggle" style="display:none;" onclick="toggleViewMode()">
+          👁️ Munkás Nézet Előnézet
+        </button>
+      </div>
 
-        <form id="farmForm" onsubmit="handleFormSubmit(event)">
-          <div class="form-group">
-            <label for="userName">Ki vagy? (Neved): *</label>
-            <input type="text" id="userName" name="userName" readonly style="opacity:0.8; background:#0f172a; cursor:not-allowed;" required>
-          </div>
+      <div class="content-container">
 
-          <div class="form-group">
-            <label for="actionType">Művelet típusa:</label>
-            <select id="actionType" name="actionType" onchange="toggleFormFields()">
-              <option value="Ültetés">🌱 Ültetés & Előkészítés</option>
-              <option value="Locsolás">💧 Locsolás</option>
-              <option value="Aratás">🚜 Aratás</option>
-              <option value="Eladás">💰 Termény eladás</option>
-              <option value="Vásárlás">🛍️ Vásárlás (Központi magtárba)</option>
-              <option value="LádaÁthelyezés">📦 Láda áthelyezés (Mag -> Farm láda)</option>
-              <option value="FarmHozzaadas">🏡 Új Farm Hozzáadása / Bérlése</option>
-              <option value="Kifizetés" id="optKifizetes" style="display: none;">💵 Admin Kifizetés (Bérmunka díj)</option>
-              <option value="BérletHosszabbítás">📅 Bérlet lejárati idejének módosítása / hosszabbítás</option>
-              <option value="Infó">ℹ️ Egyéb infó / Megjegyzés</option>
-            </select>
-          </div>
-
-          <div class="form-group" id="newFarmGroup" style="display: none;">
-            <label for="newFarmName">🏡 Új Farm Neve & Azonosítója:</label>
-            <input type="text" id="newFarmName" name="newFarmName" placeholder="Pl. Szoker (Üvegház: 7. / 11. emelet) [#4]">
-          </div>
-
-          <div class="form-group" id="workerGroup" style="display: none;">
-            <label for="workerSelect">👤 Kifizetendő Dolgozó Neve (Regisztrált):</label>
-            <select id="workerSelect" name="workerSelect" onchange="onWorkerSelectChange()">
-              <option value="">-- Töltés... --</option>
-            </select>
-            <div class="calc-box" id="workerSummaryBox" style="margin-top: 8px; font-size:0.85rem;">
-              ⏳ Válaszd ki a dolgozót a részletekhez...
+        <!-- 1. VEZÉRLŐPULT (ÖSSZESÍTŐ) -->
+        <section id="view-dashboard" class="tab-content active">
+          <div class="stats-grid">
+            <div class="stat-card green">
+              <span class="title">Összes Bevétel</span>
+              <span class="value" id="statIncome">0 Ft</span>
+            </div>
+            <div class="stat-card red">
+              <span class="title">Összes Kiadás</span>
+              <span class="value" id="statCost">0 Ft</span>
+            </div>
+            <div class="stat-card blue">
+              <span class="title">Nettó Profit</span>
+              <span class="value" id="statProfit">0 Ft</span>
             </div>
           </div>
-
-          <div class="form-group" id="farmSelectGroup">
-            <label for="farmSelect">Farm kiválasztása:</label>
-            <select id="farmSelect" name="farmSelect" onchange="onFarmSelectChange()">
-              <option value="">-- Válaszd ki a Farmot --</option>
-            </select>
+          <div class="dashboard-info-card" style="margin-top: 20px;">
+            <h3>📌 Gyors Útmutató</h3>
+            <p style="color:#94a3b8; font-size:0.9rem; margin-top:8px;">
+              Válaszd ki a bal oldali menüből a kívánt műveletet! Az <strong>Ültetés</strong>, <strong>Locsolás</strong>, <strong>Aratás</strong> és <strong>Eladás</strong> menüpontok alatt közvetlenül elérheted az adott feladathoz szükséges űrlapokat és segédeszközöket.
+            </p>
           </div>
+        </section>
 
-          <div class="form-group sub-section" id="leaseDateGroup" style="display: none;">
-            <label>📅 Új bérlet lejárati ideje (24h formátum):</label>
-            <div class="form-row">
-              <div class="form-group" style="flex: 2; margin-bottom:0;"><input type="date" id="leaseDatePart"></div>
-              <div class="form-group" style="flex: 1; margin-bottom:0;"><select id="leaseHourPart"></select></div>
-              <div class="form-group" style="flex: 1; margin-bottom:0;"><select id="leaseMinutePart"></select></div>
-            </div>
-            <input type="hidden" id="leaseExpireDate" name="leaseExpireDate">
+        <!-- 2. FARM TÉR KÉP -->
+        <section id="view-farms" class="tab-content">
+          <div id="farmMapContainer" class="farm-map-grid">
+            <!-- Dinamikusan betöltött farm kártyák -->
           </div>
+        </section>
 
-          <div class="form-group" id="parcelsGroup">
-            <label>🌱 Érintett parcellák kiválasztása:</label>
-            <div id="parcelChipsContainer"></div>
-            <input type="hidden" id="selectedParcelsList" name="selectedParcelsList" value="">
-          </div>
-
-          <div id="workStagesSection" class="sub-section" style="display: none;">
-            <label style="color:#38bdf8;">🔨 Elvégzett Munka Fázisok:</label>
-            <div class="work-stages-grid">
-              <div class="stage-item checkbox-group"><label><input type="checkbox" id="stageKapalas" name="stageKapalas" onchange="calculateAutoCost()"> 🧹 Kapálás (35%)</label></div>
-              <div class="stage-item checkbox-group"><label><input type="checkbox" id="stageAsas" name="stageAsas" onchange="calculateAutoCost()"> ⛏️ Ásás (35%)</label></div>
-              <div class="stage-item checkbox-group"><label><input type="checkbox" id="stageUltetes" name="stageUltetes" onchange="calculateAutoCost()"> 🌱 Ültetés (15%)</label></div>
-              <div class="stage-item checkbox-group"><label><input type="checkbox" id="stageLocsolas" name="stageLocsolas" onchange="calculateAutoCost()"> 💧 Locsolás (15%)</label></div>
-            </div>
-          </div>
-
-          <div class="form-group" id="cropGroup">
-            <label for="cropSelect">🌾 Növény / Vetőmag Típusa:</label>
-            <select id="cropSelect" name="cropSelect">
-              <option value="Málna 🍇" selected>Málna 🍇</option>
-              <option value="Paradicsom 🍅">Paradicsom 🍅</option>
-              <option value="Eper 🍓">Eper 🍓</option>
-              <option value="Sütőtök 🎃">Sütőtök 🎃</option>
-              <option value="Görögdinnye 🍉">Görögdinnye 🍉</option>
-              <option value="Sárgadinnye 🍈">Sárgadinnye 🍈</option>
-              <option value="Uborka 🥒">Uborka 🥒</option>
-              <option value="TV paprika 🫑">TV paprika 🫑</option>
-              <option value="Chilipaprika 🌶️">Chilipaprika 🌶️</option>
-              <option value="Almapaprika 🫑">Almapaprika 🫑</option>
-              <option value="Búza 🌾">Búza 🌾</option>
-              <option value="Kukorica 🌽">Kukorica 🌽</option>
-              <option value="Kender 🌿">Kender 🌿</option>
-              <option value="Kókacserje 🍃">Kókacserje 🍃</option>
-            </select>
-          </div>
-
-          <div class="form-group" id="harvestQtyGroup" style="display: none;">
-            <label for="harvestQty">🚜 Betakarított / Aratott mennyiség (db):</label>
-            <input type="number" id="harvestQty" name="harvestQty" value="1" min="1" placeholder="Pl. 120">
-          </div>
-
-          <div id="ultetesSection" style="display: none;" class="sub-section">
-            <div class="form-row">
-              <div class="form-group half">
-                <label for="parcelCount">Kijelölt parcellák:</label>
-                <input type="number" id="parcelCount" name="parcelCount" value="0" min="0" max="6" readonly style="opacity:0.8; background:#1e293b;">
+        <!-- 3. ÜLTETÉS NÉZET -->
+        <section id="view-ultetes" class="tab-content">
+          <div class="card-form-wrapper">
+            <h3>🌱 Új Beültetés Rögzítése</h3>
+            <form onsubmit="handleTabSpecificSubmit(event, 'Ültetés')">
+              <div class="form-group">
+                <label>Farm Kiválasztása:</label>
+                <select class="form-control farm-select-input" required></select>
               </div>
-              <div class="form-group half">
-                <label for="planterCount">Ültetők száma:</label>
-                <input type="number" id="planterCount" name="planterCount" value="1" min="1" max="10" oninput="renderPlanterInputs()" onchange="renderPlanterInputs()">
+              <div class="form-group">
+                <label>Érintett Parcellák:</label>
+                <div class="parcel-chips-container"></div>
               </div>
-            </div>
-
-            <div id="plantersContainer"></div>
-
-            <div class="form-group checkbox-group">
-              <label><input type="checkbox" id="hasExtraSeeds" name="hasExtraSeeds" value="true" onchange="toggleExtraSeedInput()"> ⚠️ Plusz magok használata (pótlás)</label>
-            </div>
-            <div class="form-group" id="extraSeedInputGroup" style="display: none;">
-              <label for="extraSeedCount">Plusz magok száma (db):</label>
-              <input type="number" id="extraSeedCount" name="extraSeedCount" value="0" min="0" onchange="updateSeedCalculator()">
-            </div>
-            <div class="calc-box" id="seedCalcBox">💡 Szükséges magok száma: <strong>0 db</strong></div>
+              <div class="form-group">
+                <label>Növény / Vetőmag Típusa:</label>
+                <select class="form-control crop-select-input">
+                  <option value="Málna 🍇">Málna 🍇</option>
+                  <option value="Paradicsom 🍅">Paradicsom 🍅</option>
+                  <option value="Kender 🌿">Kender 🌿</option>
+                  <option value="Tök 🎃">Tök 🎃</option>
+                  <option value="Eper 🍓">Eper 🍓</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Munkaszakaszok (Díj számításhoz):</label>
+                <div class="checkbox-group">
+                  <label><input type="checkbox" class="stage-kapalas" checked> Kapálás (35%)</label>
+                  <label><input type="checkbox" class="stage-asas" checked> Ásás (35%)</label>
+                  <label><input type="checkbox" class="stage-ultetes" checked> Ültetés (15%)</label>
+                  <label><input type="checkbox" class="stage-locsolas" checked> Első Locsolás (15%)</label>
+                </div>
+              </div>
+              <button type="submit" class="btn-submit">🌱 Ültetés Rögzítése</button>
+            </form>
           </div>
+        </section>
 
-          <div class="calc-box money" id="costCalcBox" style="display: none;">
-            💰 Kiszámított Munkadíj: <strong>0 Ft</strong>
-          </div>
-
-          <div class="form-group" id="buyQtyGroup" style="display: none;">
-            <label for="buyQty">🛍️ Vásárolt / Áthelyezett mennyiség (db):</label>
-            <input type="number" id="buyQty" name="buyQty" value="1" min="1">
-          </div>
-
-          <div class="form-group" id="valueGroup" style="display: none;">
-            <label for="value" id="valueLabel">💵 Összeg (Ft):</label>
-            <input type="number" id="value" name="value" placeholder="Pl. 200000">
-          </div>
-
-          <div class="form-group" id="noteGroup">
-            <label for="note">Megjegyzés:</label>
-            <textarea id="note" name="note" rows="2" placeholder="pl. elszámolva"></textarea>
-          </div>
-
-          <button type="submit" id="submitBtn">💾 Rögzítés a Táblázatba</button>
-        </form>
-
-        <div id="statusMsg" class="status-msg"></div>
+        <!-- 4. LOCSOLÁS NÉZET -->
+        <!-- Locsolás Nézet -->
+<div id="view-locsolas" class="tab-content">
+  <div class="card-form-wrapper">
+    <h3 style="color:#00f3ff; margin-bottom:12px;">💧 Locsolás Rögzítése (15 órás számláló indítása)</h3>
+    <p style="color:#94a3b8; font-size:0.85rem; margin-bottom:15px;">A locsolás kizárólag a 15 órás locsolási időzítőt frissíti.</p>
+    
+    <form onsubmit="handleTabSpecificSubmit(event, 'Locsolás')">
+      <div class="form-group">
+        <label>Farm Kiválasztása:</label>
+        <select class="farm-select-input" required>
+          <option value="">-- Válassz farmot --</option>
+        </select>
       </div>
-    </div>
-
-    <div class="right-column">
-      <div class="card admin-card" id="adminControlCard" style="display: none;">
-        <h3 style="color:#f59e0b;">👑 Admin Kezelőpult (Egyenlegek Módosítása)</h3>
-        <p class="subtitle" style="margin-bottom:12px;">Regisztrált dolgozó kifizetési egyenlegének közvetlen felülírása</p>
-
-        <div class="form-group">
-          <label>Választott Dolgozó (Regisztrált):</label>
-          <select id="adminWorkerSelect" onchange="onAdminWorkerChange()">
-            <option value="">-- Töltés... --</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Új Cél Egyenleg (Ft):</label>
-          <input type="number" id="adminTargetBalance" placeholder="Pl. 0 (Kifizetve) vagy 500000">
-        </div>
-
-        <button type="button" onclick="submitAdminBalanceAdjust()" style="background-color:#f59e0b; color:#000; border:none; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer; width:100%;">⚙️ Egyenleg Felülírása / Módosítása</button>
-        <div id="adminBalanceStatusMsg" class="status-msg"></div>
-      </div>
-
-      <div class="card">
-        <h3>💰 Regisztrált Dolgozók Járandósága</h3>
-        <div id="unpaidBalancesContainer">
-          <div class="empty-state">Töltés...</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>📈 Összesített Főegyenleg (Összes Farm)</h3>
-        <div class="widget-stats">
-          <div class="stat-box"><div class="title">Összes Bevétel</div><div class="val green" id="statIncome">0 Ft</div></div>
-          <div class="stat-box"><div class="title">Összes Költség</div><div class="val red" id="statCost">0 Ft</div></div>
-          <div class="stat-box"><div class="title">Összes Profit</div><div class="val blue" id="statProfit">0 Ft</div></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>📦 Mag Raktár & Farm Ládák</h3>
-        <div id="stockContainer"><div class="empty-state">Töltés a Táblázatból...</div></div>
-      </div>
-
-      <div class="card">
-        <h3>🗺️ Farm Parcellák Állapota</h3>
-        <div id="farmMapContainer"><div class="empty-state">Töltés...</div></div>
-        <div class="map-legend">
-          <div class="legend-item"><div class="legend-box" style="background:#1e293b; border:1px dashed #334155;"></div> Üres</div>
-          <div class="legend-item"><div class="legend-box" style="background:rgba(56, 189, 248, 0.4);"></div> Locsolva / Fejlődik</div>
-          <div class="legend-item"><div class="legend-box" style="background:rgba(249, 115, 22, 0.5);"></div> Locsolandó!</div>
-          <div class="legend-item"><div class="legend-box" style="background:rgba(34, 197, 94, 0.5);"></div> Aratásra KÉSZ!</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>⏰ Locsolás & Aratás Időzítő</h3>
-        <div id="timerContainer"><div class="empty-state">Töltés a Táblázatból...</div></div>
-      </div>
-    </div>
+      <button type="submit" class="btn-submit">💧 Locsolás Rögzítése</button>
+    </form>
   </div>
 
+  <!-- DINAMIKUS ANIMÁLT SORRENDI LISTA -->
+  <div class="card-container">
+    <div class="card-header">
+      <span style="font-size:1.3rem;">💧</span>
+      <h3>Farmok Locsolási Állapota (Élő Animált Sorrend)</h3>
+    </div>
+    <p class="card-subtitle">A lista másodpercenként frissül. A legkiszáradtabb farmok sima animációval felcsúsznak, a meglocsoltak pedig lecsúsznak az aljára.</p>
+
+    <div id="farmList" class="farm-list">
+      <!-- JS automatikusan rendezi és animálja a kártyákat -->
+    </div>
+  </div>
+</div>
+
+        <!-- 5. ARATÁS NÉZET -->
+        <section id="view-aratas" class="tab-content">
+          <div class="card-form-wrapper">
+            <h3>🚜 Betakarítás / Aratás Rögzítése</h3>
+            <form onsubmit="handleTabSpecificSubmit(event, 'Aratás')">
+              <div class="form-group">
+                <label>Farm Kiválasztása:</label>
+                <select class="form-control farm-select-input" required></select>
+              </div>
+              <div class="form-group">
+                <label>Aratott Parcellák:</label>
+                <div class="parcel-chips-container"></div>
+              </div>
+              <div class="form-group">
+                <label>Betakarított Mennyiség (db):</label>
+                <input type="number" class="form-control harvest-qty-input" placeholder="Pl. 120" min="1">
+              </div>
+              <button type="submit" class="btn-submit green">🚜 Aratás Rögzítése</button>
+            </form>
+          </div>
+        </section>
+
+        <!-- 6. ELADÁS NÉZET -->
+        <section id="view-eladas" class="tab-content">
+          <div class="card-form-wrapper">
+            <h3>💰 Termény Eladás & Bevétel Könyvelése</h3>
+            <form onsubmit="handleTabSpecificSubmit(event, 'Eladás')">
+              <div class="form-group">
+                <label>Eladott Termény Típusa:</label>
+                <select class="form-control crop-select-input">
+                  <option value="Málna 🍇">Málna 🍇</option>
+                  <option value="Paradicsom 🍅">Paradicsom 🍅</option>
+                  <option value="Kender 🌿">Kender 🌿</option>
+                  <option value="Tök 🎃">Tök 🎃</option>
+                  <option value="Eper 🍓">Eper 🍓</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Kifizetett Bevétel Összege (Ft):</label>
+                <input type="number" class="form-control sale-value-input" placeholder="Pl. 360000" required>
+              </div>
+              <button type="submit" class="btn-submit gold">💰 Bevétel Rögzítése</button>
+            </form>
+          </div>
+        </section>
+
+        <!-- 7. RAKTÁR NÉZET -->
+        <section id="view-stock" class="tab-content">
+          <div id="stockContainer" class="stock-list-container">
+            <!-- Dinamikusan betöltött raktárkészlet -->
+          </div>
+        </section>
+
+        <!-- 8. LEJÁRÓ BÉRLETEK NÉZET -->
+        <section id="view-alerts" class="tab-content">
+          <div id="rentalAlertContainer" class="alert-box-container">
+            <!-- Lejáró bérletek -->
+          </div>
+        </section>
+
+        <!-- 9. MUNKÁSOK & EGYENLEGEK NÉZET -->
+        <section id="view-workers" class="tab-content">
+          <div id="unpaidBalancesContainer" class="workers-list-container">
+            <!-- Munkások egyenlegei -->
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <?!= include('EditModal'); ?>
   <?!= include('Scripts'); ?>
 </body>
 </html>

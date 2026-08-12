@@ -7,7 +7,9 @@ var DashboardModule = (function () {
 
     // 1. Adatbázis lekérése hibakezeléssel
     try {
-      rawData = AdatbazisModule.getRawData() || [];
+      if (typeof AdatbazisModule !== 'undefined' && typeof AdatbazisModule.getRawData === 'function') {
+        rawData = AdatbazisModule.getRawData() || [];
+      }
     } catch (e) {
       Logger.log("❌ Hiba az adatok lekérésekor: " + e.message);
     }
@@ -17,16 +19,14 @@ var DashboardModule = (function () {
 
       var action = String(row[3] || '').trim();   // D oszlop: Művelet Típusa
 
-      // Hibatűrő értékkeresés: ha a G oszlop (index 6) üres/más van ott, megkeressük a számmal rendelkező oszlopot
       var val = 0;
-      var rawVal = row[6]; // Eredetileg G oszlop
+      var rawVal = row[6]; // G oszlop (Érték)
 
       if (typeof rawVal === 'number') {
         val = rawVal;
       } else if (rawVal && !isNaN(parseFloat(String(rawVal).replace(/[^0-9.-]+/g, "")))) {
         val = Number(String(rawVal).replace(/[^0-9.-]+/g, "")) || 0;
       } else {
-        // Ha eltolódott az oszlop, átfésüljük a többi oszlopot számokért
         for (var i = 4; i < row.length; i++) {
           var checkVal = Number(String(row[i]).replace(/[^0-9.-]+/g, ""));
           if (!isNaN(checkVal) && checkVal > 0) {
@@ -36,7 +36,6 @@ var DashboardModule = (function () {
         }
       }
 
-      // Egyenleg számítás korrekcióval
       if (action === "Eladás" || action === "Termény eladás") {
         totalIncome += val;
       } else if (action === "Kifizetés") {
@@ -96,10 +95,14 @@ var DashboardModule = (function () {
       Logger.log("❌ Időzítő lekérési hiba: " + e.message);
     }
 
-    // 4. FARMAK LISTÁJA
+    // 4. FARMAK ÉS BÉRLETEK LEKÉRÉSE
     var farms = [];
     var ownFarmsRent = [];
     var rentedFarmsPayable = [];
+    var expiringAlerts = [];
+
+    var now = new Date();
+    var warningWindowMs = 48 * 60 * 60 * 1000; // 2 nap (48 óra)
 
     try {
       if (typeof FarmModule !== 'undefined' && typeof FarmModule.getFarmsList === 'function') {
@@ -109,10 +112,11 @@ var DashboardModule = (function () {
           var fObj = (typeof farm === 'object') ? farm : { name: farm };
 
           var farmData = {
-            name: fObj.name || fObj.id || String(farm),
+            name: fObj.name || fObj.fullName || String(farm),
+            fullName: fObj.fullName || fObj.name || String(farm),
             size: Number(fObj.size || 80),
             type: fObj.type || 'sajat',
-            systemRentExpiry: fObj.systemRentExpiry || fObj.rentExpiry || '',
+            systemRentExpiry: fObj.systemRentExpiry || fObj.leaseExpireDate || '',
             playerRentDueDate: fObj.playerRentDueDate || '',
             rentPrice: fObj.rentPrice || 0,
             contactIgName: fObj.contactIgName || fObj.ownerIgName || '',
@@ -138,6 +142,35 @@ var DashboardModule = (function () {
             });
           }
 
+          // 2 napos lejárati ellenőrzés
+          var expStr = farmData.systemRentExpiry || farmData.playerRentDueDate;
+          if (expStr) {
+            var cleanDateStr = String(expStr).replace(/\./g, '-').replace('T', ' ');
+            var expDate = new Date(cleanDateStr);
+
+            if (!isNaN(expDate.getTime())) {
+              var diff = expDate.getTime() - now.getTime();
+              if (diff > 0 && diff <= warningWindowMs) {
+                expiringAlerts.push({
+                  farmName: farmData.name,
+                  type: farmData.type,
+                  expiry: expStr,
+                  hoursLeft: Math.round(diff / (1000 * 60 * 60)),
+                  contactIgName: farmData.contactIgName,
+                  contactDiscord: farmData.contactDiscord,
+                  contactPhone: farmData.contactPhone
+                });
+              } else if (diff <= 0 && diff >= - (24 * 60 * 60 * 1000)) {
+                expiringAlerts.push({
+                  farmName: farmData.name,
+                  type: 'EXPIRED',
+                  expiry: expStr,
+                  hoursLeft: 0
+                });
+              }
+            }
+          }
+
           return farmData;
         });
       }
@@ -155,10 +188,15 @@ var DashboardModule = (function () {
       timersData: timersData,
       farms: farms,
       ownFarmsRent: ownFarmsRent,
-      rentedFarmsPayable: rentedFarmsPayable
+      rentedFarmsPayable: rentedFarmsPayable,
+      expiringAlerts: expiringAlerts
     };
   }
 
   return { getDashboardStats: getDashboardStats };
 
 })();
+
+function getDashboardStats() {
+  return DashboardModule.getDashboardStats();
+}
